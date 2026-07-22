@@ -18,7 +18,6 @@
     .channel-card {
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    /* Custom thin scrollbar for dense channel navigation */
     ::-webkit-scrollbar {
       width: 6px;
     }
@@ -115,7 +114,7 @@
   </main>
 
   <footer class="border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-600 bg-slate-950">
-    AuraConv DSP Engine v3 • 100-Channel Dynamic Optimization
+    AuraConv DSP Engine v3 • 100-Channel Mobile-Routed Optimization
   </footer>
 
   <script>
@@ -128,9 +127,8 @@
     let currentMultiplier = minTaps;
     for (let i = 0; i < 100; i++) {
       let val = Math.round(currentMultiplier);
-      if (val % 2 === 0) val += 1; // Enforce odd numbers
+      if (val % 2 === 0) val += 1;
 
-      // Prevent duplicates in dense low-end areas
       if (oddTaps.length > 0 && val <= oddTaps[oddTaps.length - 1]) {
         val = oddTaps[oddTaps.length - 1] + 2;
       }
@@ -138,7 +136,6 @@
       currentMultiplier *= logFactor;
     }
 
-    // Dynamic category mappings
     function getCategory(size) {
       if (size <= 250) return { text: "Soften", color: "text-blue-400 bg-blue-950/40 border-blue-800/40" };
       if (size <= 2000) return { text: "Warmth", color: "text-amber-400 bg-amber-950/40 border-amber-800/40" };
@@ -299,7 +296,25 @@
       statusText.textContent = "Connecting stream...";
       
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        // [MOBILE ROUTING FIX 1/3]: Set Audio Session type for iOS devices before capturing stream
+        // This explicitly requests the play-and-record configuration to bypass internal restriction bugs.
+        if (navigator.audioSession) {
+          navigator.audioSession.type = 'play-and-record';
+        }
+
+        // [MOBILE ROUTING FIX 2/3]: Disable communication features in constraints.
+        // Forcing echoCancellation & noiseSuppression to false signals the OS that we are recording
+        // high-fidelity musical audio, not a standard cellular voice call. This prevents automatic
+        // routing to the quiet earpiece receiver.
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }, 
+          video: false 
+        });
+        
         audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
         
         const blob = new Blob([workletCode], { type: 'application/javascript' });
@@ -324,8 +339,7 @@
           const trackGain = audioCtx.createGain();
           trackGain.gain.setValueAtTime(0, audioCtx.currentTime);
 
-          // We connect micSource to node, but we DO NOT connect the node to trackGain until toggled.
-          // This saves massive CPU resources by avoiding active DSP runs inside inactive nodes.
+          // Connect input to the node, but keep node isolated from output bus until unmuted.
           micSource.connect(node);
           trackGain.connect(masterGainNode);
 
@@ -346,6 +360,15 @@
 
         masterGainNode.connect(analyserNode);
         analyserNode.connect(audioCtx.destination);
+
+        // [MOBILE ROUTING FIX 3/3]: WebKit Audio Engine "Jolt" Workaround.
+        // Suspending and immediately resuming the AudioContext after stream construction
+        // triggers WebKit / Android OS to recalculate active output routings, successfully 
+        // redirecting the Web Audio API output to the loud media speakers/speakerphone.
+        if (audioCtx.suspend && audioCtx.resume) {
+          await audioCtx.suspend();
+          await audioCtx.resume();
+        }
 
         statusText.textContent = "Audio Engine: Online";
         statusText.classList.add('neon-text', 'text-emerald-400');
@@ -385,7 +408,7 @@
         dot.className = "w-3.5 h-3.5 rounded-full bg-emerald-400 translate-x-3.5 shadow-md";
         btn.className = "w-8 h-5 bg-emerald-950 rounded-full p-0.5 transition-all border border-emerald-500/50";
         
-        // Dynamically connect active DSP module to the mixer bus to utilize CPU cycles efficiently
+        // Connect DSP node to graph on activation to dynamically save CPU
         track.node.connect(track.gainNode);
         const targetGain = document.getElementById(`gain-${index}`).value / 100;
         track.gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.01);
@@ -397,7 +420,7 @@
         
         track.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
         
-        // Disconnect node once faded out to prevent processing overhead
+        // Disconnect from Web Audio stream to stop background DSP execution
         setTimeout(() => {
           if (!track.active) {
             track.node.disconnect();
