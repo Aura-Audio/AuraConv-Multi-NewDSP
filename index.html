@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AuraConv Multi-Tap 100-Channel Resonator</title>
+  <title>AuraConv 100-Channel Dynamic Resonator Matrix</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* Neon Audio Dashboard Accents */
     .neon-border {
       box-shadow: 0 0 10px rgba(16, 185, 129, 0.2), inset 0 0 10px rgba(16, 185, 129, 0.1);
     }
@@ -18,6 +19,7 @@
     .channel-card {
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    /* Thin styling for the high-density grid scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
     }
@@ -35,11 +37,11 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
 
-  <!-- Header Section -->
+  <!-- Header Navigation -->
   <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 py-4 px-6 flex justify-between items-center">
     <div class="flex items-center space-x-3">
       <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse neon-active"></div>
-      <h1 class="text-lg font-bold tracking-wider uppercase text-emerald-400 neon-text">AuraConv 100-Tap Matrix</h1>
+      <h1 class="text-lg font-bold tracking-wider uppercase text-emerald-400 neon-text">AuraConv Pro Matrix</h1>
     </div>
     <div class="flex items-center space-x-4">
       <span class="text-xs text-slate-400 font-mono" id="status-text">Audio Engine: Offline</span>
@@ -50,15 +52,15 @@
     </div>
   </header>
 
-  <!-- Main Content Layout -->
+  <!-- Interactive Space -->
   <main class="flex-grow p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
     
-    <!-- Left column: Master Controls & Visualizer -->
+    <!-- Column 1: Master controls, preset macros and output analysis -->
     <div class="lg:col-span-4 flex flex-col space-y-6">
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col space-y-6 shadow-xl">
-        <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase border-b border-slate-800 pb-2">Master Section</h2>
+        <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase border-b border-slate-800 pb-2">Master Deck</h2>
         
-        <!-- Visualizer Canvas -->
+        <!-- Output FFT spectrum visualizer -->
         <div class="relative w-full h-40 bg-slate-950 rounded-xl overflow-hidden border border-slate-800/80">
           <canvas id="visualizer" class="w-full h-full block"></canvas>
           <div class="absolute bottom-2 left-2 text-[10px] font-mono text-slate-500 tracking-wider">Output Spectrum</div>
@@ -73,7 +75,7 @@
           <input type="range" id="master-mix" min="0" max="100" value="100" class="w-full accent-emerald-500 bg-slate-950 h-2 rounded-lg cursor-pointer">
         </div>
 
-        <!-- Master Output Gain -->
+        <!-- Master Gain -->
         <div class="flex flex-col space-y-2">
           <div class="flex justify-between text-xs font-mono text-slate-400">
             <span>Master Volume</span>
@@ -82,9 +84,9 @@
           <input type="range" id="master-vol" min="0" max="100" value="70" class="w-full accent-emerald-500 bg-slate-950 h-2 rounded-lg cursor-pointer">
         </div>
 
-        <!-- Quick Presets -->
+        <!-- Macro presets -->
         <div class="flex flex-col space-y-3">
-          <div class="text-xs font-mono text-slate-400 uppercase tracking-widest border-t border-slate-800 pt-4 pb-1">Mixer Presets</div>
+          <div class="text-xs font-mono text-slate-400 uppercase tracking-widest border-t border-slate-800 pt-4 pb-1">Group Tapes Presets</div>
           <div class="grid grid-cols-2 gap-2">
             <button onclick="applyPreset('softener')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Transient Softeners</button>
             <button onclick="applyPreset('muffle')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Mid Warmths</button>
@@ -95,10 +97,10 @@
       </div>
     </div>
 
-    <!-- Right column: The 100 parallel track matrix -->
+    <!-- Column 2: Compact 100-channel processing grid -->
     <div class="lg:col-span-8 flex flex-col space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase">Parallel Tap Matrix</h2>
+        <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase">Parallel Processing Matrix</h2>
         <div class="flex items-center space-x-2">
           <button onclick="toggleAllTracks(true)" id="btn-select-all" disabled class="px-2 py-1 text-[10px] font-semibold rounded bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 hover:bg-emerald-900/40 transition-colors cursor-not-allowed">Enable All</button>
           <button onclick="toggleAllTracks(false)" id="btn-deselect-all" disabled class="px-2 py-1 text-[10px] font-semibold rounded bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800 transition-colors cursor-not-allowed">Disable All</button>
@@ -106,7 +108,7 @@
         </div>
       </div>
       
-      <!-- Compact Grid Layout for 100 elements -->
+      <!-- High-density viewport container -->
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto max-h-[72vh] pr-2" id="grid-container">
         <!-- Generates 100 channels dynamically here -->
       </div>
@@ -114,14 +116,14 @@
   </main>
 
   <footer class="border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-600 bg-slate-950">
-    AuraConv DSP Engine v3 • 100-Channel Mobile-Routed Optimization
+    AuraConv DSP Engine v3 • 100-Channel Dynamic Allocation Architecture
   </footer>
 
   <script>
-    // 1. Generate 100 logarithmically distributed odd-numbered tap lengths
+    // 1. Generate 100 logarithmically distributed odd-numbered tap lengths (up to 250,001)
     const oddTaps = [];
     const minTaps = 25;
-    const maxTaps = 100001;
+    const maxTaps = 250001;
     const logFactor = Math.pow(maxTaps / minTaps, 1 / 99);
 
     let currentMultiplier = minTaps;
@@ -129,6 +131,7 @@
       let val = Math.round(currentMultiplier);
       if (val % 2 === 0) val += 1;
 
+      // Prevent low-end rounding duplicates
       if (oddTaps.length > 0 && val <= oddTaps[oddTaps.length - 1]) {
         val = oddTaps[oddTaps.length - 1] + 2;
       }
@@ -136,34 +139,39 @@
       currentMultiplier *= logFactor;
     }
 
+    // Color code and organize channel categories
     function getCategory(size) {
       if (size <= 250) return { text: "Soften", color: "text-blue-400 bg-blue-950/40 border-blue-800/40" };
       if (size <= 2000) return { text: "Warmth", color: "text-amber-400 bg-amber-950/40 border-amber-800/40" };
-      if (size <= 15000) return { text: "Blur", color: "text-purple-400 bg-purple-950/40 border-purple-800/40" };
+      if (size <= 20000) return { text: "Blur", color: "text-purple-400 bg-purple-950/40 border-purple-800/40" };
       return { text: "Wash", color: "text-emerald-400 bg-emerald-950/40 border-emerald-800/40" };
     }
 
-    // 2. AudioWorkletProcessor DSP Engine Code
+    // 2. High-Performance AudioWorklet Processor
     const workletCode = `
       class MovingAverageProcessor extends AudioWorkletProcessor {
         static get parameterDescriptors() {
           return [
-            { name: 'size', defaultValue: 1001, minValue: 25, maxValue: 100001 },
             { name: 'gain', defaultValue: 0.15, minValue: 0, maxValue: 1 },
             { name: 'mix', defaultValue: 1.0, minValue: 0, maxValue: 1 }
           ];
         }
 
-        constructor() {
+        constructor(options) {
           super();
-          this.maxSize = 131072;
+          // Dynamically read options payload generated at instantiation
+          const size = options.processorOptions.size || 1001;
+          this.size = size;
+          
+          // [DYNAMIC BUFFER SIZING]: Allocate only up to the exact power-of-two ceiling required for this node.
+          // This keeps memory use minimal on heavy channel grids.
+          this.maxSize = Math.pow(2, Math.ceil(Math.log2(size)));
           this.mask = this.maxSize - 1;
           this.memL = new Float32Array(this.maxSize);
           this.memR = new Float32Array(this.maxSize);
           this.writePos = 0;
           this.sumL = 0;
           this.sumR = 0;
-          this.prevSize = 1001;
         }
 
         process(inputs, outputs, parameters) {
@@ -177,50 +185,43 @@
           const outputL = output[0];
           const outputR = output[1] || outputL;
 
-          const sizeArr = parameters.size;
           const gainArr = parameters.gain;
           const mixArr = parameters.mix;
 
           const bufferLength = inputL.length;
+          const size = this.size;
+          const delaySamps = (size - 1) / 2;
 
           for (let i = 0; i < bufferLength; i++) {
-            const sizeVal = sizeArr.length > 1 ? sizeArr[i] : sizeArr[0];
-            let size = Math.floor(sizeVal);
-            if (size % 2 === 0) size += 1;
-
             const gain = gainArr.length > 1 ? gainArr[i] : gainArr[0];
             const mix = mixArr.length > 1 ? mixArr[i] : mixArr[0];
-
-            if (size !== this.prevSize) {
-              this.memL.fill(0);
-              this.memR.fill(0);
-              this.sumL = 0;
-              this.sumR = 0;
-              this.writePos = 0;
-              this.prevSize = size;
-            }
 
             const inL = inputL[i];
             const inR = inputR[i];
 
+            // 1. Write newest sample to optimized delay line
             this.memL[this.writePos] = inL;
             this.memR[this.writePos] = inR;
 
+            // 2. Add newest to running accumulator
             this.sumL += inL;
             this.sumR += inR;
 
+            // 3. Subtract oldest leaving moving window
             const readPos = (this.writePos - size) & this.mask;
             this.sumL -= this.memL[readPos];
             this.sumR -= this.memR[readPos];
 
+            // 4. Calculate Wet Signal
             const wetL = (this.sumL / size) * gain;
             const wetR = (this.sumR / size) * gain;
 
-            const delaySamps = (size - 1) / 2;
+            // 5. Calculate Phase-Aligned Dry Signal (integer center point)
             const dryPos = (this.writePos - delaySamps) & this.mask;
             const dryL = this.memL[dryPos];
             const dryR = this.memR[dryPos];
 
+            // 6. Zero-comb blending output
             outputL[i] = dryL + (wetL - dryL) * mix;
             outputR[i] = dryR + (wetR - dryR) * mix;
 
@@ -234,7 +235,7 @@
       registerProcessor('moving-average-processor', MovingAverageProcessor);
     `;
 
-    // 3. Setup global variables
+    // 3. System States & Configuration
     let audioCtx = null;
     let micSource = null;
     let masterGainNode = null;
@@ -252,7 +253,7 @@
     const btnSelectAll = document.getElementById('btn-select-all');
     const btnDeselectAll = document.getElementById('btn-deselect-all');
 
-    // 4. Render the 100 Compact Cards
+    // 4. Populate 100 Mixer Strip Cards
     oddTaps.forEach((taps, idx) => {
       const category = getCategory(taps);
       const card = document.createElement('div');
@@ -289,7 +290,7 @@
       gridContainer.appendChild(card);
     });
 
-    // 5. Audio Context Setup
+    // 5. Initialize Web Audio Engine
     micBtn.addEventListener('click', async () => {
       if (audioCtx) return;
 
@@ -297,15 +298,13 @@
       
       try {
         // [MOBILE ROUTING FIX 1/3]: Set Audio Session type for iOS devices before capturing stream
-        // This explicitly requests the play-and-record configuration to bypass internal restriction bugs.
         if (navigator.audioSession) {
           navigator.audioSession.type = 'play-and-record';
         }
 
         // [MOBILE ROUTING FIX 2/3]: Disable communication features in constraints.
-        // Forcing echoCancellation & noiseSuppression to false signals the OS that we are recording
-        // high-fidelity musical audio, not a standard cellular voice call. This prevents automatic
-        // routing to the quiet earpiece receiver.
+        // Explicitly forcing echoCancellation to false signals the OS that we are recording
+        // high-fidelity musical audio, preventing routing to the call receiver.
         const stream = await navigator.mediaDevices.getUserMedia({ 
           audio: {
             echoCancellation: false,
@@ -330,16 +329,23 @@
 
         for (let i = 0; i < oddTaps.length; i++) {
           const tapsValue = oddTaps[i];
-          const node = new AudioWorkletNode(audioCtx, 'moving-average-processor');
           
-          node.parameters.get('size').setValueAtTime(tapsValue, audioCtx.currentTime);
+          // [DYNAMIC MEMORY OPTIMIZATION]: Pass specific sizes directly to node constructor.
+          // This keeps each separate float array allocated exactly to its required tap power-of-two.
+          const node = new AudioWorkletNode(audioCtx, 'moving-average-processor', {
+            processorOptions: {
+              size: tapsValue
+            }
+          });
+          
           node.parameters.get('gain').setValueAtTime(0.5, audioCtx.currentTime);
           node.parameters.get('mix').setValueAtTime(1.0, audioCtx.currentTime);
 
           const trackGain = audioCtx.createGain();
           trackGain.gain.setValueAtTime(0, audioCtx.currentTime);
 
-          // Connect input to the node, but keep node isolated from output bus until unmuted.
+          // Connect input to nodes, but DO NOT connect outputs to master mixer bus.
+          // This keeps unused nodes from executing DSP, saving processing cycles.
           micSource.connect(node);
           trackGain.connect(masterGainNode);
 
@@ -362,9 +368,8 @@
         analyserNode.connect(audioCtx.destination);
 
         // [MOBILE ROUTING FIX 3/3]: WebKit Audio Engine "Jolt" Workaround.
-        // Suspending and immediately resuming the AudioContext after stream construction
-        // triggers WebKit / Android OS to recalculate active output routings, successfully 
-        // redirecting the Web Audio API output to the loud media speakers/speakerphone.
+        // Suspending and immediately resuming forces iOS / Android to route audio output
+        // to the loud media speakers instead of the call receiver.
         if (audioCtx.suspend && audioCtx.resume) {
           await audioCtx.suspend();
           await audioCtx.resume();
@@ -391,7 +396,7 @@
       }
     });
 
-    // 6. Audio Routing & Matrix Automation
+    // 6. Router Routing & Channel Automation
     window.toggleTrack = function(index) {
       if (!audioCtx) return;
       
@@ -408,7 +413,7 @@
         dot.className = "w-3.5 h-3.5 rounded-full bg-emerald-400 translate-x-3.5 shadow-md";
         btn.className = "w-8 h-5 bg-emerald-950 rounded-full p-0.5 transition-all border border-emerald-500/50";
         
-        // Connect DSP node to graph on activation to dynamically save CPU
+        // Connect nodes to routing path on toggle activation (saves CPU)
         track.node.connect(track.gainNode);
         const targetGain = document.getElementById(`gain-${index}`).value / 100;
         track.gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.01);
@@ -420,7 +425,7 @@
         
         track.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
         
-        // Disconnect from Web Audio stream to stop background DSP execution
+        // Disconnect nodes once fade-out completes to avoid background computation overhead
         setTimeout(() => {
           if (!track.active) {
             track.node.disconnect();
@@ -445,7 +450,7 @@
       }
     }
 
-    // Dynamic Connection Optimization for Bulk Group Toggles
+    // Dynamic Connections for Bulk Group Toggles
     window.toggleAllTracks = function(enable) {
       if (!audioCtx) return;
 
@@ -554,8 +559,8 @@
         const taps = oddTaps[idx];
         
         if (type === 'softener' && taps <= 250) shouldEnable = true;
-        if (type === 'muffle' && taps > 250 && taps <= 3000) shouldEnable = true;
-        if (type === 'wash' && taps > 15000) shouldEnable = true;
+        if (type === 'muffle' && taps > 250 && taps <= 5000) shouldEnable = true;
+        if (type === 'wash' && taps > 25000) shouldEnable = true;
 
         if (track.active !== shouldEnable) {
           track.active = shouldEnable;
