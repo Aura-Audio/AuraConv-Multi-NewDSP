@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AuraConv v7 150-Channel Abyssal Resonator Matrix</title>
+  <title>AuraConv 150-Channel Abyssal Resonator Matrix</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* Neon Audio Dashboard Accents */
@@ -41,7 +41,7 @@
   <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 py-4 px-6 flex justify-between items-center">
     <div class="flex items-center space-x-3">
       <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse neon-active"></div>
-      <h1 class="text-lg font-bold tracking-wider uppercase text-emerald-400 neon-text">AuraConv Abyssal Matrix v7</h1>
+      <h1 class="text-lg font-bold tracking-wider uppercase text-emerald-400 neon-text">AuraConv Pro Matrix</h1>
     </div>
     <div class="flex items-center space-x-4">
       <span class="text-xs text-slate-400 font-mono" id="status-text">Audio Engine: Offline</span>
@@ -84,6 +84,24 @@
           <input type="range" id="master-vol" min="0" max="100" value="70" class="w-full accent-emerald-500 bg-slate-950 h-2 rounded-lg cursor-pointer">
         </div>
 
+        <!-- Resonance (Feedback) Slider -->
+        <div class="flex flex-col space-y-2">
+          <div class="flex justify-between text-xs font-mono text-slate-400">
+            <span>Resonance (Feedback)</span>
+            <span id="master-fb-val">0%</span>
+          </div>
+          <input type="range" id="master-fb" min="0" max="95" value="0" class="w-full accent-emerald-500 bg-slate-950 h-2 rounded-lg cursor-pointer">
+        </div>
+
+        <!-- Timbre Tilt Slider -->
+        <div class="flex flex-col space-y-2">
+          <div class="flex justify-between text-xs font-mono text-slate-400">
+            <span>Timbre Tilt</span>
+            <span id="master-tilt-val">Flat</span>
+          </div>
+          <input type="range" id="master-tilt" min="0" max="100" value="50" class="w-full accent-emerald-500 bg-slate-950 h-2 rounded-lg cursor-pointer">
+        </div>
+
         <!-- Macro presets -->
         <div class="flex flex-col space-y-3">
           <div class="text-xs font-mono text-slate-400 uppercase tracking-widest border-t border-slate-800 pt-4 pb-1">Group Tapes Presets</div>
@@ -117,15 +135,15 @@
   </main>
 
   <footer class="border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-600 bg-slate-950">
-    AuraConv DSP Engine v4 • 150-Channel Dynamic Space Optimization
+    AuraConv DSP Engine v4 • 150-Channel Modal Resonator Architecture
   </footer>
 
   <script>
     // 1. Generate 150 logarithmically distributed odd-numbered tap lengths (up to 1,000,001)
     const oddTaps = [];
     const minTaps = 25;
-    const maxTaps = 1000001; // Expanded to 1 Million Taps (20.8 seconds group delay)
-    const logFactor = Math.pow(maxTaps / minTaps, 1 / 149); // Spaced across 150 parallel nodes
+    const maxTaps = 1000001; 
+    const logFactor = Math.pow(maxTaps / minTaps, 1 / 149); 
     let currentMultiplier = minTaps;
 
     for (let i = 0; i < 150; i++) {
@@ -138,7 +156,6 @@
       currentMultiplier *= logFactor;
     }
 
-    // Five-tier categorization mapping
     function getCategory(size) {
       if (size <= 250) return { text: "Soften", color: "text-blue-400 bg-blue-950/40 border-blue-800/40" };
       if (size <= 2000) return { text: "Warmth", color: "text-amber-400 bg-amber-950/40 border-amber-800/40" };
@@ -147,13 +164,14 @@
       return { text: "Abyss", color: "text-cyan-400 bg-cyan-950/40 border-cyan-800/40" };
     }
 
-    // 2. High-Performance AudioWorklet Processor (WASM-Sized Buffer Architectures)
+    // 2. High-Performance AudioWorklet Processor with Feedback Modeling
     const workletCode = `
       class MovingAverageProcessor extends AudioWorkletProcessor {
         static get parameterDescriptors() {
           return [
             { name: 'gain', defaultValue: 0.15, minValue: 0, maxValue: 1 },
-            { name: 'mix', defaultValue: 1.0, minValue: 0, maxValue: 1 }
+            { name: 'mix', defaultValue: 1.0, minValue: 0, maxValue: 1 },
+            { name: 'feedback', defaultValue: 0.0, minValue: 0, maxValue: 0.95 }
           ];
         }
 
@@ -161,9 +179,6 @@
           super(options);
           const size = options.processorOptions.size || 1001;
           this.size = size;
-          
-          // [DYNAMIC BUFFER SIZING]: Allocate size exactly to the power-of-two ceiling.
-          // For 1,000,001 taps, maxSize is 1,048,576 (only 4MB memory allocation).
           this.maxSize = Math.pow(2, Math.ceil(Math.log2(size)));
           this.mask = this.maxSize - 1;
           this.memL = new Float32Array(this.maxSize);
@@ -171,6 +186,8 @@
           this.writePos = 0;
           this.sumL = 0;
           this.sumR = 0;
+          this.prevWetL = 0;
+          this.prevWetR = 0;
         }
 
         process(inputs, outputs, parameters) {
@@ -185,6 +202,7 @@
 
           const gainArr = parameters.gain;
           const mixArr = parameters.mix;
+          const fbArr = parameters.feedback;
           const bufferLength = inputL.length;
           const size = this.size;
           const delaySamps = (size - 1) / 2;
@@ -192,13 +210,16 @@
 
           const isGainAutomated = gainArr.length > 1;
           const isMixAutomated = mixArr.length > 1;
+          const isFbAutomated = fbArr.length > 1;
 
           for (let i = 0; i < bufferLength; i++) {
             const gain = isGainAutomated ? gainArr[i] : gainArr[0];
             const mix = isMixAutomated ? mixArr[i] : mixArr[0];
+            const feedback = isFbAutomated ? fbArr[i] : fbArr[0];
 
-            const inL = inputL[i];
-            const inR = inputR[i];
+            // Feedback: inject the previous wet sample back into the input stream for modal resonance
+            const inL = inputL[i] + (this.prevWetL * feedback);
+            const inR = inputR[i] + (this.prevWetR * feedback);
 
             this.memL[this.writePos] = inL;
             this.memR[this.writePos] = inR;
@@ -210,11 +231,12 @@
             this.sumL -= this.memL[readPos];
             this.sumR -= this.memR[readPos];
 
-            // NOTE: Double-precision floating-point arithmetic on accumulator variables (this.sumL/R)
-            // prevents any noticeable rounding drift, removing the need for real-time loops that cause CPU spikes.
-
             const wetL = (this.sumL / size) * gain;
             const wetR = (this.sumR / size) * gain;
+
+            // Cache wet signals to apply as feedback on the next sample frame
+            this.prevWetL = wetL;
+            this.prevWetR = wetR;
 
             const dryPos = (this.writePos - delaySamps) & mask;
             const dryL = this.memL[dryPos];
@@ -245,6 +267,10 @@
     const masterVolVal = document.getElementById('master-vol-val');
     const masterMixSlider = document.getElementById('master-mix');
     const masterMixVal = document.getElementById('master-mix-val');
+    const masterFbSlider = document.getElementById('master-fb');
+    const masterFbVal = document.getElementById('master-fb-val');
+    const masterTiltSlider = document.getElementById('master-tilt');
+    const masterTiltVal = document.getElementById('master-tilt-val');
     const activeCountText = document.getElementById('active-count');
     const btnSelectAll = document.getElementById('btn-select-all');
     const btnDeselectAll = document.getElementById('btn-deselect-all');
@@ -338,6 +364,7 @@
           
           node.parameters.get('gain').setValueAtTime(0.5, audioCtx.currentTime);
           node.parameters.get('mix').setValueAtTime(1.0, audioCtx.currentTime);
+          node.parameters.get('feedback').setValueAtTime(masterFbSlider.value / 100, audioCtx.currentTime);
 
           const trackGain = audioCtx.createGain();
           trackGain.gain.setValueAtTime(0, audioCtx.currentTime);
@@ -390,7 +417,35 @@
       }
     });
 
-    // 6. Centralized Track State Management (DRY Principle)
+    // 6. Centralized Track State Management & Timbre Weighting
+    function updateTrackGain(idx) {
+      if (!audioCtx) return;
+      const track = tracks[idx];
+      const rawGain = parseFloat(track.ui.gainSlider.value) / 100;
+      
+      // Calculate Timbre Tilt factor
+      // idx goes from 0 (shortest taps, e.g. 25) to 149 (longest taps, e.g. 1,000,001)
+      const tiltVal = parseFloat(masterTiltSlider.value); // 0 to 100
+      let weight = 1.0;
+      
+      if (tiltVal > 50) {
+        // Bright tilt: boost short taps (low idx), attenuate long taps (high idx)
+        const factor = (100 - tiltVal) / 50; // 1 to 0
+        const progress = idx / 149; // 0 to 1
+        weight = 1 - progress + (progress * factor);
+      } else if (tiltVal < 50) {
+        // Dark tilt: boost long taps (high idx), attenuate short taps (low idx)
+        const factor = tiltVal / 50; // 0 to 1
+        const progress = idx / 149; // 0 to 1
+        weight = progress + ((1 - progress) * factor);
+      }
+      
+      const finalGain = rawGain * weight;
+      if (track.active) {
+        track.gainNode.gain.setTargetAtTime(finalGain, audioCtx.currentTime, 0.01);
+      }
+    }
+
     function setTrackActive(index, isActive) {
       const track = tracks[index];
       if (track.active === isActive) return;
@@ -406,7 +461,7 @@
         
         micSource.connect(track.node);
         track.node.connect(track.gainNode);
-        track.gainNode.gain.setTargetAtTime(parseFloat(ui.gainSlider.value) / 100, audioCtx.currentTime, 0.01);
+        updateTrackGain(index); // Dynamically calculates final gain applying Timbre Tilt
       } else {
         ui.card.classList.add('opacity-60');
         ui.card.classList.remove('neon-border', 'border-emerald-500/50');
@@ -444,9 +499,7 @@
         track.ui.mixVal.textContent = `${mixVal}%`;
 
         track.node.parameters.get('mix').setTargetAtTime(mixVal / 100, audioCtx.currentTime, 0.01);
-        if (track.active) {
-          track.gainNode.gain.setTargetAtTime(gainVal / 100, audioCtx.currentTime, 0.01);
-        }
+        updateTrackGain(idx);
       }
     });
 
@@ -483,6 +536,30 @@
         tracks.forEach(track => {
           track.node.parameters.get('mix').setTargetAtTime(mixTime, audioCtx.currentTime, 0.01);
         });
+      }
+    });
+
+    masterFbSlider.addEventListener('input', () => {
+      const val = parseFloat(masterFbSlider.value);
+      masterFbVal.textContent = `${val}%`;
+      if (audioCtx) {
+        const feedbackValue = val / 100;
+        tracks.forEach(track => {
+          track.node.parameters.get('feedback').setTargetAtTime(feedbackValue, audioCtx.currentTime, 0.01);
+        });
+      }
+    });
+
+    masterTiltSlider.addEventListener('input', () => {
+      const val = parseInt(masterTiltSlider.value, 10);
+      if (val === 50) masterTiltVal.textContent = "Flat";
+      else if (val > 50) masterTiltVal.textContent = `Bright (+${(val - 50) * 2}%)`;
+      else masterTiltVal.textContent = `Dark (+${(50 - val) * 2}%)`;
+      
+      if (audioCtx) {
+        for (let i = 0; i < tracks.length; i++) {
+          updateTrackGain(i);
+        }
       }
     });
 
