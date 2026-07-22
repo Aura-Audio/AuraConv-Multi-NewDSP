@@ -17,6 +17,7 @@ By splitting a live microphone input across **25 parallel DSP tracks**—ranging
 - v3 - https://77beef2d.auraconv-multi-newdsp.pages.dev/
 - v4 - https://26c55732.auraconv-multi-newdsp.pages.dev/
 - v5 - https://4d0c2bb1.auraconv-multi-newdsp.pages.dev/
+- v6 - https://682ffc51.auraconv-multi-newdsp.pages.dev/ - WASM
 ---
 
 ## ✨ Core Features
