@@ -1,6 +1,6 @@
 # AuraConv-Multi-NewDSP
 
-# AuraConv Multi-Tap Resonator 🌊
+### AuraConv Multi-Tap Resonator 🌊
 
 ![Platform](https://img.shields.io/badge/Platform-Web%20Audio%20API-blue?style=flat-square)
 ![Category](https://img.shields.io/badge/Category-Interactive%20DSP-orange?style=flat-square)
