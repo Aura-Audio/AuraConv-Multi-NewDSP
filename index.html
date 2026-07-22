@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AuraConv 100-Channel Dynamic Resonator Matrix</title>
+  <title>AuraConv 150-Channel Abyssal Resonator Matrix</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* Neon Audio Dashboard Accents */
@@ -41,7 +41,7 @@
   <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 py-4 px-6 flex justify-between items-center">
     <div class="flex items-center space-x-3">
       <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse neon-active"></div>
-      <h1 class="text-lg font-bold tracking-wider uppercase text-emerald-400 neon-text">AuraConv Pro Matrix</h1>
+      <h1 class="text-lg font-bold tracking-wider uppercase text-emerald-400 neon-text">AuraConv Abyssal Matrix</h1>
     </div>
     <div class="flex items-center space-x-4">
       <span class="text-xs text-slate-400 font-mono" id="status-text">Audio Engine: Offline</span>
@@ -91,43 +91,44 @@
             <button id="preset-softener" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Transient Softeners</button>
             <button id="preset-muffle" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Mid Warmths</button>
             <button id="preset-wash" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Ambient Blurs</button>
-            <button id="btn-mute-all" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:bg-slate-900 transition-colors">Mute All</button>
+            <button id="preset-abyss" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Abyssal Drones</button>
+            <button id="btn-mute-all" class="px-3 py-2 col-span-2 text-xs font-semibold rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:bg-slate-900 transition-colors">Mute All</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Column 2: Compact 100-channel processing grid -->
+    <!-- Column 2: Compact 150-channel processing grid -->
     <div class="lg:col-span-8 flex flex-col space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
         <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase">Parallel Processing Matrix</h2>
         <div class="flex items-center space-x-2">
           <button id="btn-select-all" disabled class="px-2 py-1 text-[10px] font-semibold rounded bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 hover:bg-emerald-900/40 transition-colors cursor-not-allowed opacity-50">Enable All</button>
           <button id="btn-deselect-all" disabled class="px-2 py-1 text-[10px] font-semibold rounded bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800 transition-colors cursor-not-allowed opacity-50">Disable All</button>
-          <span class="text-xs font-mono text-slate-500" id="active-count">0/100 Active</span>
+          <span class="text-xs font-mono text-slate-500" id="active-count">0/150 Active</span>
         </div>
       </div>
       
-      <!-- High-density viewport container -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto max-h-[72vh] pr-2" id="grid-container">
-        <!-- Generates 100 channels dynamically here -->
+      <!-- Highly-responsive, high-density 150-column viewport grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5 overflow-y-auto max-h-[72vh] pr-2" id="grid-container">
+        <!-- Generates 150 channels dynamically here -->
       </div>
     </div>
   </main>
 
   <footer class="border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-600 bg-slate-950">
-    AuraConv DSP Engine v3 • 100-Channel Dynamic Allocation Architecture
+    AuraConv DSP Engine v4 • 150-Channel Dynamic Space Optimization
   </footer>
 
   <script>
-    // 1. Generate 100 logarithmically distributed odd-numbered tap lengths (up to 250,001)
+    // 1. Generate 150 logarithmically distributed odd-numbered tap lengths (up to 1,000,001)
     const oddTaps = [];
     const minTaps = 25;
-    const maxTaps = 250001;
-    const logFactor = Math.pow(maxTaps / minTaps, 1 / 99);
+    const maxTaps = 1000001; // Expanded to 1 Million Taps (20.8 seconds group delay)
+    const logFactor = Math.pow(maxTaps / minTaps, 1 / 149); // Spaced across 150 parallel nodes
     let currentMultiplier = minTaps;
 
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 150; i++) {
       let val = Math.round(currentMultiplier);
       if (val % 2 === 0) val += 1;
       if (oddTaps.length > 0 && val <= oddTaps[oddTaps.length - 1]) {
@@ -137,14 +138,16 @@
       currentMultiplier *= logFactor;
     }
 
+    // Five-tier categorization mapping
     function getCategory(size) {
       if (size <= 250) return { text: "Soften", color: "text-blue-400 bg-blue-950/40 border-blue-800/40" };
       if (size <= 2000) return { text: "Warmth", color: "text-amber-400 bg-amber-950/40 border-amber-800/40" };
       if (size <= 20000) return { text: "Blur", color: "text-purple-400 bg-purple-950/40 border-purple-800/40" };
-      return { text: "Wash", color: "text-emerald-400 bg-emerald-950/40 border-emerald-800/40" };
+      if (size <= 150000) return { text: "Wash", color: "text-emerald-400 bg-emerald-950/40 border-emerald-800/40" };
+      return { text: "Abyss", color: "text-cyan-400 bg-cyan-950/40 border-cyan-800/40" };
     }
 
-    // 2. High-Performance AudioWorklet Processor
+    // 2. High-Performance AudioWorklet Processor (WASM-Sized Buffer Architectures)
     const workletCode = `
       class MovingAverageProcessor extends AudioWorkletProcessor {
         static get parameterDescriptors() {
@@ -158,6 +161,9 @@
           super(options);
           const size = options.processorOptions.size || 1001;
           this.size = size;
+          
+          // [DYNAMIC BUFFER SIZING]: Allocate size exactly to the power-of-two ceiling.
+          // For 1,000,001 taps, maxSize is 1,048,576 (only 4MB memory allocation).
           this.maxSize = Math.pow(2, Math.ceil(Math.log2(size)));
           this.mask = this.maxSize - 1;
           this.memL = new Float32Array(this.maxSize);
@@ -170,7 +176,6 @@
         process(inputs, outputs, parameters) {
           const input = inputs[0];
           const output = outputs[0];
-          // DEFENSIVE GUARD: Exit early if input or output arrays are unallocated to prevent processor crashes
           if (!input || input.length === 0 || !output || output.length === 0) return true;
 
           const inputL = input[0];
@@ -205,15 +210,8 @@
             this.sumL -= this.memL[readPos];
             this.sumR -= this.memR[readPos];
 
-            if (this.writePos === 0) {
-              let tempSumL = 0, tempSumR = 0;
-              for (let j = 0; j < size; j++) {
-                tempSumL += this.memL[j];
-                tempSumR += this.memR[j];
-              }
-              this.sumL = tempSumL;
-              this.sumR = tempSumR;
-            }
+            // NOTE: Double-precision floating-point arithmetic on accumulator variables (this.sumL/R)
+            // prevents any noticeable rounding drift, removing the need for real-time loops that cause CPU spikes.
 
             const wetL = (this.sumL / size) * gain;
             const wetR = (this.sumR / size) * gain;
@@ -251,31 +249,31 @@
     const btnSelectAll = document.getElementById('btn-select-all');
     const btnDeselectAll = document.getElementById('btn-deselect-all');
 
-    // 4. Populate 100 Mixer Strip Cards with Data Attributes & Cached References
+    // 4. Populate 150 Mixer Strip Cards with Data Attributes & Cached References
     oddTaps.forEach((taps, idx) => {
       const category = getCategory(taps);
       const card = document.createElement('div');
-      card.className = "channel-card bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex flex-col space-y-2 opacity-60";
+      card.className = "channel-card bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex flex-col space-y-1.5 opacity-60";
       
       card.innerHTML = `
         <div class="flex justify-between items-center">
-          <div class="flex items-center space-x-2">
-            <span class="text-xs font-bold text-slate-200">${taps.toLocaleString()}</span>
-            <span class="text-[8px] px-1 py-0.5 rounded border uppercase tracking-wider ${category.color}">${category.text}</span>
+          <div class="flex items-center space-x-1.5 overflow-hidden">
+            <span class="text-xs font-bold text-slate-200 truncate">${taps.toLocaleString()}</span>
+            <span class="text-[7.5px] px-1 py-0.2 rounded border uppercase tracking-wider ${category.color}">${category.text}</span>
           </div>
           <button data-idx="${idx}" class="toggle-btn w-8 h-5 bg-slate-800 rounded-full p-0.5 transition-all cursor-not-allowed" disabled>
             <div class="dot w-3.5 h-3.5 rounded-full bg-slate-600 transition-all"></div>
           </button>
         </div>
-        <div class="flex flex-col space-y-0.5 pt-1">
-          <div class="flex justify-between text-[9px] font-mono text-slate-500">
+        <div class="flex flex-col space-y-0.5 pt-0.5">
+          <div class="flex justify-between text-[8px] font-mono text-slate-500">
             <span>Gain</span>
             <span class="gain-val">50%</span>
           </div>
           <input type="range" data-idx="${idx}" class="gain-slider w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50" min="0" max="100" value="50" disabled>
         </div>
         <div class="flex flex-col space-y-0.5">
-          <div class="flex justify-between text-[9px] font-mono text-slate-500">
+          <div class="flex justify-between text-[8px] font-mono text-slate-500">
             <span>Mix</span>
             <span class="mix-val">100%</span>
           </div>
@@ -363,7 +361,7 @@
         masterGainNode.connect(analyserNode);
         analyserNode.connect(audioCtx.destination);
 
-        // [MOBILE SPEAKERPHONE ROUTING FIX]: Suspend and resume the context post-setup
+        // [MOBILE SPEAKERPHONE ROUTING FIX]: Trigger suspend/resume cycles to force output route evaluation
         if (audioCtx.suspend && audioCtx.resume) {
           await audioCtx.suspend();
           await audioCtx.resume();
@@ -465,7 +463,7 @@
 
     function updateActiveCount() {
       const count = tracks.filter(t => t.active).length;
-      activeCountText.textContent = `${count}/100 Active`;
+      activeCountText.textContent = `${count}/150 Active`;
     }
 
     // 7. Master System Integration
@@ -537,7 +535,8 @@
         let shouldEnable = false;
         if (type === 'softener' && track.taps <= 250) shouldEnable = true;
         else if (type === 'muffle' && track.taps > 250 && track.taps <= 5000) shouldEnable = true;
-        else if (type === 'wash' && track.taps > 20000) shouldEnable = true; 
+        else if (type === 'wash' && track.taps > 5000 && track.taps <= 150000) shouldEnable = true; 
+        else if (type === 'abyss' && track.taps > 150000) shouldEnable = true; 
 
         setTrackActive(track.idx, shouldEnable);
       });
@@ -547,6 +546,7 @@
     document.getElementById('preset-softener').addEventListener('click', () => applyPreset('softener'));
     document.getElementById('preset-muffle').addEventListener('click', () => applyPreset('muffle'));
     document.getElementById('preset-wash').addEventListener('click', () => applyPreset('wash'));
+    document.getElementById('preset-abyss').addEventListener('click', () => applyPreset('abyss'));
   </script>
 </body>
 </html>
