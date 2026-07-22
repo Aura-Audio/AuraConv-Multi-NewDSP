@@ -11,6 +11,8 @@ AuraConv Multi-Tap Resonator is a browser-native, high-performance sound design 
 
 By splitting a live microphone input across **25 parallel DSP tracks**—ranging from 25 to 100,001 taps—it allows users to sculpt transients, create dense acoustic blurs, and generate ethereal ambient washes directly in any modern web browser.
 
+- Main - https://auraconv-multi-newdsp.pages.dev/
+- v1 - https://0fa4310b.auraconv-multi-newdsp.pages.dev/
 ---
 
 ## ✨ Core Features
