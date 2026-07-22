@@ -3,11 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AuraConv Multi-Tap Resonator Dashboard</title>
-  <!-- Tailwind CSS for modern responsive styling -->
+  <title>AuraConv Multi-Tap 100-Channel Resonator</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Neon Glow Effects */
     .neon-border {
       box-shadow: 0 0 10px rgba(16, 185, 129, 0.2), inset 0 0 10px rgba(16, 185, 129, 0.1);
     }
@@ -17,9 +15,22 @@
     .neon-active {
       box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
     }
-    /* Smooth transition for active state cards */
     .channel-card {
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    /* Custom thin scrollbar for dense channel navigation */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #020617;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #10b981;
     }
   </style>
 </head>
@@ -29,7 +40,7 @@
   <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 py-4 px-6 flex justify-between items-center">
     <div class="flex items-center space-x-3">
       <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse neon-active"></div>
-      <h1 class="text-xl font-bold tracking-wider uppercase text-emerald-400 neon-text">AuraConv Multi-Tap</h1>
+      <h1 class="text-lg font-bold tracking-wider uppercase text-emerald-400 neon-text">AuraConv 100-Tap Matrix</h1>
     </div>
     <div class="flex items-center space-x-4">
       <span class="text-xs text-slate-400 font-mono" id="status-text">Audio Engine: Offline</span>
@@ -45,8 +56,6 @@
     
     <!-- Left column: Master Controls & Visualizer -->
     <div class="lg:col-span-4 flex flex-col space-y-6">
-      
-      <!-- Master Deck -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col space-y-6 shadow-xl">
         <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase border-b border-slate-800 pb-2">Master Section</h2>
         
@@ -78,49 +87,66 @@
         <div class="flex flex-col space-y-3">
           <div class="text-xs font-mono text-slate-400 uppercase tracking-widest border-t border-slate-800 pt-4 pb-1">Mixer Presets</div>
           <div class="grid grid-cols-2 gap-2">
-            <button onclick="applyPreset('bypass')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Deselect All</button>
-            <button onclick="applyPreset('softener')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Transient Softener</button>
-            <button onclick="applyPreset('muffle')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Mid Muffling</button>
-            <button onclick="applyPreset('wash')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Ambient Blur</button>
+            <button onclick="applyPreset('softener')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Transient Softeners</button>
+            <button onclick="applyPreset('muffle')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Mid Warmths</button>
+            <button onclick="applyPreset('wash')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Ambient Blurs</button>
+            <button onclick="toggleAllTracks(false)" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:bg-slate-900 transition-colors">Mute All</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Right column: The 25 parallel track strip channels -->
+    <!-- Right column: The 100 parallel track matrix -->
     <div class="lg:col-span-8 flex flex-col space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase">25-Channel Parallel Moving Average Matrix</h2>
-        <span class="text-xs font-mono text-slate-500" id="active-count">0 Channels Engaged</span>
+        <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase">Parallel Tap Matrix</h2>
+        <div class="flex items-center space-x-2">
+          <button onclick="toggleAllTracks(true)" id="btn-select-all" disabled class="px-2 py-1 text-[10px] font-semibold rounded bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 hover:bg-emerald-900/40 transition-colors cursor-not-allowed">Enable All</button>
+          <button onclick="toggleAllTracks(false)" id="btn-deselect-all" disabled class="px-2 py-1 text-[10px] font-semibold rounded bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800 transition-colors cursor-not-allowed">Disable All</button>
+          <span class="text-xs font-mono text-slate-500" id="active-count">0/100 Active</span>
+        </div>
       </div>
       
-      <!-- Channels Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-h-[70vh] pr-2" id="grid-container">
-        <!-- JS generates 25 channels dynamically here -->
+      <!-- Compact Grid Layout for 100 elements -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto max-h-[72vh] pr-2" id="grid-container">
+        <!-- Generates 100 channels dynamically here -->
       </div>
     </div>
   </main>
 
   <footer class="border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-600 bg-slate-950">
-    AuraConv DSP Engine v3 • Phase-Aligned Delay Line Architecture
+    AuraConv DSP Engine v3 • 100-Channel Dynamic Optimization
   </footer>
 
   <script>
-    // 1. The 25 distinct Odd-Numbered values from the dropdown
-    const oddTaps = [
-      25, 35, 51, 75, 101, 151, 201, 251, 351, 501, 751, 1001, 1501, 2001, 2501, 
-      3501, 5001, 7501, 10001, 15001, 20001, 25001, 50001, 75001, 100001
-    ];
+    // 1. Generate 100 logarithmically distributed odd-numbered tap lengths
+    const oddTaps = [];
+    const minTaps = 25;
+    const maxTaps = 100001;
+    const logFactor = Math.pow(maxTaps / minTaps, 1 / 99);
 
-    // Map categorization tags
-    function getCategory(size) {
-      if (size <= 201) return { text: "Transient Softener", color: "text-blue-400 bg-blue-950/40 border-blue-800/40" };
-      if (size <= 1501) return { text: "Mid Warmth", color: "text-amber-400 bg-amber-950/40 border-amber-800/40" };
-      if (size <= 10001) return { text: "Cloudy Blur", color: "text-purple-400 bg-purple-950/40 border-purple-800/40" };
-      return { text: "Ambient Wash", color: "text-emerald-400 bg-emerald-950/40 border-emerald-800/40" };
+    let currentMultiplier = minTaps;
+    for (let i = 0; i < 100; i++) {
+      let val = Math.round(currentMultiplier);
+      if (val % 2 === 0) val += 1; // Enforce odd numbers
+
+      // Prevent duplicates in dense low-end areas
+      if (oddTaps.length > 0 && val <= oddTaps[oddTaps.length - 1]) {
+        val = oddTaps[oddTaps.length - 1] + 2;
+      }
+      oddTaps.push(val);
+      currentMultiplier *= logFactor;
     }
 
-    // 2. AudioWorkletProcessor Code (packaged as an inline String)
+    // Dynamic category mappings
+    function getCategory(size) {
+      if (size <= 250) return { text: "Soften", color: "text-blue-400 bg-blue-950/40 border-blue-800/40" };
+      if (size <= 2000) return { text: "Warmth", color: "text-amber-400 bg-amber-950/40 border-amber-800/40" };
+      if (size <= 15000) return { text: "Blur", color: "text-purple-400 bg-purple-950/40 border-purple-800/40" };
+      return { text: "Wash", color: "text-emerald-400 bg-emerald-950/40 border-emerald-800/40" };
+    }
+
+    // 2. AudioWorkletProcessor DSP Engine Code
     const workletCode = `
       class MovingAverageProcessor extends AudioWorkletProcessor {
         static get parameterDescriptors() {
@@ -133,7 +159,7 @@
 
         constructor() {
           super();
-          this.maxSize = 131072; // next power of two above 100001
+          this.maxSize = 131072;
           this.mask = this.maxSize - 1;
           this.memL = new Float32Array(this.maxSize);
           this.memR = new Float32Array(this.maxSize);
@@ -150,7 +176,7 @@
           if (!input || input.length === 0) return true;
 
           const inputL = input[0];
-          const inputR = input[1] || inputL; // Fallback to mono if stream is mono
+          const inputR = input[1] || inputL;
           const outputL = output[0];
           const outputR = output[1] || outputL;
 
@@ -163,12 +189,11 @@
           for (let i = 0; i < bufferLength; i++) {
             const sizeVal = sizeArr.length > 1 ? sizeArr[i] : sizeArr[0];
             let size = Math.floor(sizeVal);
-            if (size % 2 === 0) size += 1; // Enforce odd tap boundary
+            if (size % 2 === 0) size += 1;
 
             const gain = gainArr.length > 1 ? gainArr[i] : gainArr[0];
             const mix = mixArr.length > 1 ? mixArr[i] : mixArr[0];
 
-            // If size changes dynamically, wipe buffers via rapid zeroing
             if (size !== this.prevSize) {
               this.memL.fill(0);
               this.memR.fill(0);
@@ -181,30 +206,24 @@
             const inL = inputL[i];
             const inR = inputR[i];
 
-            // 1. Write newest sample to power-of-two delay line
             this.memL[this.writePos] = inL;
             this.memR[this.writePos] = inR;
 
-            // 2. Add newest to running sum accumulator
             this.sumL += inL;
             this.sumR += inR;
 
-            // 3. Subtract oldest leaving the window index
             const readPos = (this.writePos - size) & this.mask;
             this.sumL -= this.memL[readPos];
             this.sumR -= this.memR[readPos];
 
-            // 4. Calculate Processed (Wet) Signal
             const wetL = (this.sumL / size) * gain;
             const wetR = (this.sumR / size) * gain;
 
-            // 5. Calculate Phase-Aligned Dry Signal (exact integer center point)
             const delaySamps = (size - 1) / 2;
             const dryPos = (this.writePos - delaySamps) & this.mask;
             const dryL = this.memL[dryPos];
             const dryR = this.memR[dryPos];
 
-            // 6. Blended Output (perfect zero-comb mixing)
             outputL[i] = dryL + (wetL - dryL) * mix;
             outputR[i] = dryR + (wetR - dryR) * mix;
 
@@ -218,7 +237,7 @@
       registerProcessor('moving-average-processor', MovingAverageProcessor);
     `;
 
-    // 3. Application State and DOM Setup
+    // 3. Setup global variables
     let audioCtx = null;
     let micSource = null;
     let masterGainNode = null;
@@ -233,36 +252,38 @@
     const masterMixSlider = document.getElementById('master-mix');
     const masterMixVal = document.getElementById('master-mix-val');
     const activeCountText = document.getElementById('active-count');
+    const btnSelectAll = document.getElementById('btn-select-all');
+    const btnDeselectAll = document.getElementById('btn-deselect-all');
 
-    // 4. Dynamically Render the 25 Channels
+    // 4. Render the 100 Compact Cards
     oddTaps.forEach((taps, idx) => {
       const category = getCategory(taps);
       const card = document.createElement('div');
       card.id = `card-${idx}`;
-      card.className = "channel-card bg-slate-900 border border-slate-800/80 rounded-xl p-4 flex flex-col space-y-3 opacity-60";
+      card.className = "channel-card bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex flex-col space-y-2 opacity-60";
       
       card.innerHTML = `
         <div class="flex justify-between items-center">
-          <div class="flex flex-col">
-            <span class="text-sm font-bold tracking-tight text-slate-100">${taps} Taps</span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wider mt-1 ${category.color}">${category.text}</span>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-bold text-slate-200">${taps.toLocaleString()}</span>
+            <span class="text-[8px] px-1 py-0.2 rounded border uppercase tracking-wider ${category.color}">${category.text}</span>
           </div>
-          <button id="toggle-${idx}" disabled onclick="toggleTrack(${idx})" class="w-10 h-6 bg-slate-800 rounded-full p-1 transition-all cursor-not-allowed">
-            <div id="dot-${idx}" class="w-4 h-4 rounded-full bg-slate-600 transition-all"></div>
+          <button id="toggle-${idx}" disabled onclick="toggleTrack(${idx})" class="w-8 h-5 bg-slate-800 rounded-full p-0.5 transition-all cursor-not-allowed">
+            <div id="dot-${idx}" class="w-3.5 h-3.5 rounded-full bg-slate-600 transition-all"></div>
           </button>
         </div>
 
-        <div class="flex flex-col space-y-1 pt-1">
-          <div class="flex justify-between text-[10px] font-mono text-slate-500">
-            <span>Wet Gain</span>
+        <div class="flex flex-col space-y-0.5 pt-1">
+          <div class="flex justify-between text-[9px] font-mono text-slate-500">
+            <span>Gain</span>
             <span id="gain-val-${idx}">50%</span>
           </div>
           <input type="range" id="gain-${idx}" min="0" max="100" value="50" disabled oninput="updateTrack(${idx})" class="w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50">
         </div>
 
-        <div class="flex flex-col space-y-1">
-          <div class="flex justify-between text-[10px] font-mono text-slate-500">
-            <span>Wet/Dry</span>
+        <div class="flex flex-col space-y-0.5">
+          <div class="flex justify-between text-[9px] font-mono text-slate-500">
+            <span>Mix</span>
             <span id="mix-val-${idx}">100%</span>
           </div>
           <input type="range" id="mix-${idx}" min="0" max="100" value="100" disabled oninput="updateTrack(${idx})" class="w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50">
@@ -271,18 +292,16 @@
       gridContainer.appendChild(card);
     });
 
-    // 5. Initialize Web Audio Engine
+    // 5. Audio Context Setup
     micBtn.addEventListener('click', async () => {
-      if (audioCtx) return; // Prevent double initialization
+      if (audioCtx) return;
 
-      statusText.textContent = "Requesting mic permission...";
+      statusText.textContent = "Connecting stream...";
       
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        
         audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
         
-        // Convert the inline string code to a loadable Blobed URL Module
         const blob = new Blob([workletCode], { type: 'application/javascript' });
         const workletURL = URL.createObjectURL(blob);
         await audioCtx.audioWorklet.addModule(workletURL);
@@ -294,23 +313,20 @@
         analyserNode = audioCtx.createAnalyser();
         analyserNode.fftSize = 256;
 
-        // Build the 25 parallel DSP pathways
         for (let i = 0; i < oddTaps.length; i++) {
           const tapsValue = oddTaps[i];
           const node = new AudioWorkletNode(audioCtx, 'moving-average-processor');
           
-          // Map internal parameters directly to v3 definitions
           node.parameters.get('size').setValueAtTime(tapsValue, audioCtx.currentTime);
           node.parameters.get('gain').setValueAtTime(0.5, audioCtx.currentTime);
           node.parameters.get('mix').setValueAtTime(1.0, audioCtx.currentTime);
 
-          // Individual track output router node
           const trackGain = audioCtx.createGain();
-          trackGain.gain.setValueAtTime(0, audioCtx.currentTime); // default to muted
+          trackGain.gain.setValueAtTime(0, audioCtx.currentTime);
 
-          // Mic -> Tap Processor -> Router -> Master Mix Bus
+          // We connect micSource to node, but we DO NOT connect the node to trackGain until toggled.
+          // This saves massive CPU resources by avoiding active DSP runs inside inactive nodes.
           micSource.connect(node);
-          node.connect(trackGain);
           trackGain.connect(masterGainNode);
 
           tracks.push({
@@ -319,7 +335,7 @@
             active: false
           });
 
-          // Enable UI elements
+          // Enable channel UI elements
           document.getElementById(`toggle-${i}`).disabled = false;
           document.getElementById(`toggle-${i}`).classList.remove('cursor-not-allowed');
           document.getElementById(`gain-${i}`).disabled = false;
@@ -337,17 +353,22 @@
         micBtn.classList.add('bg-emerald-950', 'text-emerald-400', 'border', 'border-emerald-500', 'neon-active', 'cursor-not-allowed');
         micBtn.disabled = true;
 
+        btnSelectAll.disabled = false;
+        btnSelectAll.classList.remove('cursor-not-allowed', 'opacity-50');
+        btnDeselectAll.disabled = false;
+        btnDeselectAll.classList.remove('cursor-not-allowed', 'opacity-50');
+
         startVisualizer();
         updateActiveCount();
 
       } catch (err) {
-        console.error("Failed to start audio engine:", err);
-        statusText.textContent = "Permissions Denied / Audio Error";
+        console.error("Audio init failure:", err);
+        statusText.textContent = "Error: Input Blocked";
         statusText.classList.add('text-red-500');
       }
     });
 
-    // 6. Mixer Channel Interactions
+    // 6. Audio Routing & Matrix Automation
     window.toggleTrack = function(index) {
       if (!audioCtx) return;
       
@@ -361,20 +382,27 @@
       if (track.active) {
         card.classList.remove('opacity-60');
         card.classList.add('neon-border', 'border-emerald-500/50');
-        dot.className = "w-4 h-4 rounded-full bg-emerald-400 translate-x-4 shadow-md";
-        btn.className = "w-10 h-6 bg-emerald-950 rounded-full p-1 transition-all border border-emerald-500/50";
+        dot.className = "w-3.5 h-3.5 rounded-full bg-emerald-400 translate-x-3.5 shadow-md";
+        btn.className = "w-8 h-5 bg-emerald-950 rounded-full p-0.5 transition-all border border-emerald-500/50";
         
-        // 1-pole smooth fade-in to prevent clicks
+        // Dynamically connect active DSP module to the mixer bus to utilize CPU cycles efficiently
+        track.node.connect(track.gainNode);
         const targetGain = document.getElementById(`gain-${index}`).value / 100;
         track.gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.01);
       } else {
         card.classList.add('opacity-60');
         card.classList.remove('neon-border', 'border-emerald-500/50');
-        dot.className = "w-4 h-4 rounded-full bg-slate-600 transition-all";
-        btn.className = "w-10 h-6 bg-slate-800 rounded-full p-1 transition-all";
+        dot.className = "w-3.5 h-3.5 rounded-full bg-slate-600 transition-all";
+        btn.className = "w-8 h-5 bg-slate-800 rounded-full p-0.5 transition-all";
         
-        // Smooth fade-out
         track.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+        
+        // Disconnect node once faded out to prevent processing overhead
+        setTimeout(() => {
+          if (!track.active) {
+            track.node.disconnect();
+          }
+        }, 50);
       }
       updateActiveCount();
     }
@@ -388,19 +416,56 @@
       document.getElementById(`gain-val-${index}`).textContent = `${gainInput}%`;
       document.getElementById(`mix-val-${index}`).textContent = `${mixInput}%`;
 
-      // Set target parameters with smooth interpolation curves
       track.node.parameters.get('mix').setTargetAtTime(mixInput / 100, audioCtx.currentTime, 0.01);
       if (track.active) {
         track.gainNode.gain.setTargetAtTime(gainInput / 100, audioCtx.currentTime, 0.01);
       }
     }
 
-    function updateActiveCount() {
-      const count = tracks.filter(t => t.active).length;
-      activeCountText.textContent = `${count} Channel${count !== 1 ? 's' : ''} Engaged`;
+    // Dynamic Connection Optimization for Bulk Group Toggles
+    window.toggleAllTracks = function(enable) {
+      if (!audioCtx) return;
+
+      tracks.forEach((track, idx) => {
+        if (track.active !== enable) {
+          track.active = enable;
+          const card = document.getElementById(`card-${idx}`);
+          const dot = document.getElementById(`dot-${idx}`);
+          const btn = document.getElementById(`toggle-${idx}`);
+
+          if (enable) {
+            card.classList.remove('opacity-60');
+            card.classList.add('neon-border', 'border-emerald-500/50');
+            dot.className = "w-3.5 h-3.5 rounded-full bg-emerald-400 translate-x-3.5 shadow-md";
+            btn.className = "w-8 h-5 bg-emerald-950 rounded-full p-0.5 transition-all border border-emerald-500/50";
+            
+            track.node.connect(track.gainNode);
+            const targetGain = document.getElementById(`gain-${idx}`).value / 100;
+            track.gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.01);
+          } else {
+            card.classList.add('opacity-60');
+            card.classList.remove('neon-border', 'border-emerald-500/50');
+            dot.className = "w-3.5 h-3.5 rounded-full bg-slate-600 transition-all";
+            btn.className = "w-8 h-5 bg-slate-800 rounded-full p-0.5 transition-all";
+            
+            track.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+            setTimeout(() => {
+              if (!track.active) {
+                track.node.disconnect();
+              }
+            }, 50);
+          }
+        }
+      });
+      updateActiveCount();
     }
 
-    // 7. Master Parameters
+    function updateActiveCount() {
+      const count = tracks.filter(t => t.active).length;
+      activeCountText.textContent = `${count}/100 Active`;
+    }
+
+    // 7. Master System Integration
     masterVolSlider.addEventListener('input', () => {
       const val = masterVolSlider.value;
       masterVolVal.textContent = `${val}%`;
@@ -413,14 +478,13 @@
       const val = masterMixSlider.value;
       masterMixVal.textContent = `${val}%`;
       if (audioCtx) {
-        // Global mix scales all parallel track mix parameters simultaneously
         tracks.forEach(track => {
           track.node.parameters.get('mix').setTargetAtTime(val / 100, audioCtx.currentTime, 0.01);
         });
       }
     });
 
-    // 8. Visualizer Rendering
+    // 8. Visualizer Render
     function startVisualizer() {
       const canvas = document.getElementById('visualizer');
       const canvasCtx = canvas.getContext('2d');
@@ -435,7 +499,7 @@
 
         analyserNode.getByteFrequencyData(dataArray);
 
-        canvasCtx.fillStyle = '#020617'; // Dark Slate background
+        canvasCtx.fillStyle = '#020617';
         canvasCtx.fillRect(0, 0, width, height);
 
         const barWidth = (width / bufferLength) * 2.5;
@@ -445,7 +509,6 @@
           const percent = dataArray[i] / 255;
           const barHeight = percent * height;
 
-          // Glowing emerald-to-cyan gradient
           const red = 16;
           const green = Math.floor(percent * 150 + 100);
           const blue = Math.floor(percent * 80 + 120);
@@ -459,22 +522,49 @@
       draw();
     }
 
-    // 9. Quick Mixing Presets
+    // 9. Presets with Dynamic Scaling
     window.applyPreset = function(type) {
       if (!audioCtx) return;
 
       tracks.forEach((track, idx) => {
         let shouldEnable = false;
+        const taps = oddTaps[idx];
         
-        if (type === 'softener' && oddTaps[idx] <= 201) shouldEnable = true;
-        if (type === 'muffle' && oddTaps[idx] > 201 && oddTaps[idx] <= 1501) shouldEnable = true;
-        if (type === 'wash' && oddTaps[idx] > 10001) shouldEnable = true;
+        if (type === 'softener' && taps <= 250) shouldEnable = true;
+        if (type === 'muffle' && taps > 250 && taps <= 3000) shouldEnable = true;
+        if (type === 'wash' && taps > 15000) shouldEnable = true;
 
-        // Force state alignment
         if (track.active !== shouldEnable) {
-          toggleTrack(idx);
+          track.active = shouldEnable;
+          const card = document.getElementById(`card-${idx}`);
+          const dot = document.getElementById(`dot-${idx}`);
+          const btn = document.getElementById(`toggle-${idx}`);
+
+          if (shouldEnable) {
+            card.classList.remove('opacity-60');
+            card.classList.add('neon-border', 'border-emerald-500/50');
+            dot.className = "w-3.5 h-3.5 rounded-full bg-emerald-400 translate-x-3.5 shadow-md";
+            btn.className = "w-8 h-5 bg-emerald-950 rounded-full p-0.5 transition-all border border-emerald-500/50";
+            
+            track.node.connect(track.gainNode);
+            const targetGain = document.getElementById(`gain-${idx}`).value / 100;
+            track.gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.01);
+          } else {
+            card.classList.add('opacity-60');
+            card.classList.remove('neon-border', 'border-emerald-500/50');
+            dot.className = "w-3.5 h-3.5 rounded-full bg-slate-600 transition-all";
+            btn.className = "w-8 h-5 bg-slate-800 rounded-full p-0.5 transition-all";
+            
+            track.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+            setTimeout(() => {
+              if (!track.active) {
+                track.node.disconnect();
+              }
+            }, 50);
+          }
         }
       });
+      updateActiveCount();
     }
   </script>
 </body>
