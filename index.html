@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AuraConv 100-Channel Dynamic Resonator Matrix - v5</title>
+  <title>AuraConv 100-Channel Dynamic Resonator Matrix</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* Neon Audio Dashboard Accents */
@@ -155,7 +155,7 @@
         }
 
         constructor(options) {
-          super();
+          super(options);
           const size = options.processorOptions.size || 1001;
           this.size = size;
           this.maxSize = Math.pow(2, Math.ceil(Math.log2(size)));
@@ -170,7 +170,8 @@
         process(inputs, outputs, parameters) {
           const input = inputs[0];
           const output = outputs[0];
-          if (!input || input.length === 0) return true;
+          // DEFENSIVE GUARD: Exit early if input or output arrays are unallocated to prevent processor crashes
+          if (!input || input.length === 0 || !output || output.length === 0) return true;
 
           const inputL = input[0];
           const inputR = input[1] || inputL;
@@ -184,7 +185,6 @@
           const delaySamps = (size - 1) / 2;
           const mask = this.mask;
 
-          // OPTIMIZATION: Cache parameter automation state outside the sample loop
           const isGainAutomated = gainArr.length > 1;
           const isMixAutomated = mixArr.length > 1;
 
@@ -205,7 +205,6 @@
             this.sumL -= this.memL[readPos];
             this.sumR -= this.memR[readPos];
 
-            // OPTIMIZATION: Prevent floating-point drift accumulation over long runtimes
             if (this.writePos === 0) {
               let tempSumL = 0, tempSumR = 0;
               for (let j = 0; j < size; j++) {
@@ -308,6 +307,9 @@
       if (audioCtx) return;
       statusText.textContent = "Connecting stream...";
       
+      // CRITICAL FIX: Synchronously create AudioContext at the very start of the user gesture to satisfy browser security
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+
       try {
         if ('audioSession' in navigator) {
           navigator.audioSession.type = 'play-and-record';
@@ -318,12 +320,10 @@
           video: false 
         });
         
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        
         const blob = new Blob([workletCode], { type: 'application/javascript' });
         const workletURL = URL.createObjectURL(blob);
         await audioCtx.audioWorklet.addModule(workletURL);
-        URL.revokeObjectURL(workletURL); // OPTIMIZATION: Free Blob memory
+        URL.revokeObjectURL(workletURL); 
 
         micSource = audioCtx.createMediaStreamSource(stream);
         masterGainNode = audioCtx.createGain();
@@ -334,6 +334,7 @@
 
         for (let i = 0; i < oddTaps.length; i++) {
           const node = new AudioWorkletNode(audioCtx, 'moving-average-processor', {
+            outputChannelCount: [2], // Force stereo output channel configuration
             processorOptions: { size: oddTaps[i] }
           });
           
@@ -342,6 +343,9 @@
 
           const trackGain = audioCtx.createGain();
           trackGain.gain.setValueAtTime(0, audioCtx.currentTime);
+          
+          // Connect individual track gain nodes to the master mix bus
+          trackGain.connect(masterGainNode);
 
           tracks[i].node = node;
           tracks[i].gainNode = trackGain;
@@ -359,7 +363,11 @@
         masterGainNode.connect(analyserNode);
         analyserNode.connect(audioCtx.destination);
 
-        if (audioCtx.state === 'suspended') {
+        // [MOBILE SPEAKERPHONE ROUTING FIX]: Suspend and resume the context post-setup
+        if (audioCtx.suspend && audioCtx.resume) {
+          await audioCtx.suspend();
+          await audioCtx.resume();
+        } else if (audioCtx.state === 'suspended') {
           await audioCtx.resume();
         }
 
@@ -398,7 +406,6 @@
         ui.dot.className = "dot w-3.5 h-3.5 rounded-full bg-emerald-400 translate-x-3.5 shadow-md";
         ui.toggleBtn.className = "toggle-btn w-8 h-5 bg-emerald-950 rounded-full p-0.5 transition-all border border-emerald-500/50";
         
-        // OPTIMIZATION: Connect to source to guarantee DSP execution
         micSource.connect(track.node);
         track.node.connect(track.gainNode);
         track.gainNode.gain.setTargetAtTime(parseFloat(ui.gainSlider.value) / 100, audioCtx.currentTime, 0.01);
@@ -410,7 +417,6 @@
         
         track.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
         
-        // OPTIMIZATION: Disconnect from source to guarantee DSP suspension and CPU savings
         setTimeout(() => {
           if (!track.active) {
             track.node.disconnect();
@@ -489,7 +495,10 @@
       const bufferLength = analyserNode.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
 
-      // OPTIMIZATION: Handle resize via ResizeObserver instead of per-frame assignment
+      // Pre-initialize dimension properties to prevent zero-size drawing errors on initial frames
+      canvas.width = canvas.parentElement.clientWidth || 300;
+      canvas.height = canvas.parentElement.clientHeight || 150;
+
       const resizeObserver = new ResizeObserver(() => {
         canvas.width = canvas.parentElement.clientWidth;
         canvas.height = canvas.parentElement.clientHeight;
@@ -528,7 +537,7 @@
         let shouldEnable = false;
         if (type === 'softener' && track.taps <= 250) shouldEnable = true;
         else if (type === 'muffle' && track.taps > 250 && track.taps <= 5000) shouldEnable = true;
-        else if (type === 'wash' && track.taps > 20000) shouldEnable = true; // Aligned with getCategory logic
+        else if (type === 'wash' && track.taps > 20000) shouldEnable = true; 
 
         setTrackActive(track.idx, shouldEnable);
       });
