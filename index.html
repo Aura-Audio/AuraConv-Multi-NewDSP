@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraConv Multi-Tap Resonator Dashboard</title>
+  <!-- Tailwind CSS for modern responsive styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Neon Glow Effects */
+    .neon-border {
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.2), inset 0 0 10px rgba(16, 185, 129, 0.1);
+    }
+    .neon-text {
+      text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    }
+    .neon-active {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+    }
+    /* Smooth transition for active state cards */
+    .channel-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+
+  <!-- Header Section -->
+  <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 py-4 px-6 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse neon-active"></div>
+      <h1 class="text-xl font-bold tracking-wider uppercase text-emerald-400 neon-text">AuraConv Multi-Tap</h1>
+    </div>
+    <div class="flex items-center space-x-4">
+      <span class="text-xs text-slate-400 font-mono" id="status-text">Audio Engine: Offline</span>
+      <button id="mic-btn" class="px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-slate-950 font-bold text-sm tracking-wide transition-all shadow-md active:scale-95 flex items-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+        <span>Activate Microphone</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-grow p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left column: Master Controls & Visualizer -->
+    <div class="lg:col-span-4 flex flex-col space-y-6">
+      
+      <!-- Master Deck -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col space-y-6 shadow-xl">
+        <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase border-b border-slate-800 pb-2">Master Section</h2>
+        
+        <!-- Visualizer Canvas -->
+        <div class="relative w-full h-40 bg-slate-950 rounded-xl overflow-hidden border border-slate-800/80">
+          <canvas id="visualizer" class="w-full h-full block"></canvas>
+          <div class="absolute bottom-2 left-2 text-[10px] font-mono text-slate-500 tracking-wider">Output Spectrum</div>
+        </div>
+
+        <!-- Master Dry/Wet -->
+        <div class="flex flex-col space-y-2">
+          <div class="flex justify-between text-xs font-mono text-slate-400">
+            <span>Global Mix</span>
+            <span id="master-mix-val">100%</span>
+          </div>
+          <input type="range" id="master-mix" min="0" max="100" value="100" class="w-full accent-emerald-500 bg-slate-950 h-2 rounded-lg cursor-pointer">
+        </div>
+
+        <!-- Master Output Gain -->
+        <div class="flex flex-col space-y-2">
+          <div class="flex justify-between text-xs font-mono text-slate-400">
+            <span>Master Volume</span>
+            <span id="master-vol-val">70%</span>
+          </div>
+          <input type="range" id="master-vol" min="0" max="100" value="70" class="w-full accent-emerald-500 bg-slate-950 h-2 rounded-lg cursor-pointer">
+        </div>
+
+        <!-- Quick Presets -->
+        <div class="flex flex-col space-y-3">
+          <div class="text-xs font-mono text-slate-400 uppercase tracking-widest border-t border-slate-800 pt-4 pb-1">Mixer Presets</div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="applyPreset('bypass')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Deselect All</button>
+            <button onclick="applyPreset('softener')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Transient Softener</button>
+            <button onclick="applyPreset('muffle')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Mid Muffling</button>
+            <button onclick="applyPreset('wash')" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">Ambient Blur</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: The 25 parallel track strip channels -->
+    <div class="lg:col-span-8 flex flex-col space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <h2 class="text-sm font-semibold tracking-widest text-slate-400 uppercase">25-Channel Parallel Moving Average Matrix</h2>
+        <span class="text-xs font-mono text-slate-500" id="active-count">0 Channels Engaged</span>
+      </div>
+      
+      <!-- Channels Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-h-[70vh] pr-2" id="grid-container">
+        <!-- JS generates 25 channels dynamically here -->
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-600 bg-slate-950">
+    AuraConv DSP Engine v3 • Phase-Aligned Delay Line Architecture
+  </footer>
+
+  <script>
+    // 1. The 25 distinct Odd-Numbered values from the dropdown
+    const oddTaps = [
+      25, 35, 51, 75, 101, 151, 201, 251, 351, 501, 751, 1001, 1501, 2001, 2501, 
+      3501, 5001, 7501, 10001, 15001, 20001, 25001, 50001, 75001, 100001
+    ];
+
+    // Map categorization tags
+    function getCategory(size) {
+      if (size <= 201) return { text: "Transient Softener", color: "text-blue-400 bg-blue-950/40 border-blue-800/40" };
+      if (size <= 1501) return { text: "Mid Warmth", color: "text-amber-400 bg-amber-950/40 border-amber-800/40" };
+      if (size <= 10001) return { text: "Cloudy Blur", color: "text-purple-400 bg-purple-950/40 border-purple-800/40" };
+      return { text: "Ambient Wash", color: "text-emerald-400 bg-emerald-950/40 border-emerald-800/40" };
+    }
+
+    // 2. AudioWorkletProcessor Code (packaged as an inline String)
+    const workletCode = `
+      class MovingAverageProcessor extends AudioWorkletProcessor {
+        static get parameterDescriptors() {
+          return [
+            { name: 'size', defaultValue: 1001, minValue: 25, maxValue: 100001 },
+            { name: 'gain', defaultValue: 0.15, minValue: 0, maxValue: 1 },
+            { name: 'mix', defaultValue: 1.0, minValue: 0, maxValue: 1 }
+          ];
+        }
+
+        constructor() {
+          super();
+          this.maxSize = 131072; // next power of two above 100001
+          this.mask = this.maxSize - 1;
+          this.memL = new Float32Array(this.maxSize);
+          this.memR = new Float32Array(this.maxSize);
+          this.writePos = 0;
+          this.sumL = 0;
+          this.sumR = 0;
+          this.prevSize = 1001;
+        }
+
+        process(inputs, outputs, parameters) {
+          const input = inputs[0];
+          const output = outputs[0];
+          
+          if (!input || input.length === 0) return true;
+
+          const inputL = input[0];
+          const inputR = input[1] || inputL; // Fallback to mono if stream is mono
+          const outputL = output[0];
+          const outputR = output[1] || outputL;
+
+          const sizeArr = parameters.size;
+          const gainArr = parameters.gain;
+          const mixArr = parameters.mix;
+
+          const bufferLength = inputL.length;
+
+          for (let i = 0; i < bufferLength; i++) {
+            const sizeVal = sizeArr.length > 1 ? sizeArr[i] : sizeArr[0];
+            let size = Math.floor(sizeVal);
+            if (size % 2 === 0) size += 1; // Enforce odd tap boundary
+
+            const gain = gainArr.length > 1 ? gainArr[i] : gainArr[0];
+            const mix = mixArr.length > 1 ? mixArr[i] : mixArr[0];
+
+            // If size changes dynamically, wipe buffers via rapid zeroing
+            if (size !== this.prevSize) {
+              this.memL.fill(0);
+              this.memR.fill(0);
+              this.sumL = 0;
+              this.sumR = 0;
+              this.writePos = 0;
+              this.prevSize = size;
+            }
+
+            const inL = inputL[i];
+            const inR = inputR[i];
+
+            // 1. Write newest sample to power-of-two delay line
+            this.memL[this.writePos] = inL;
+            this.memR[this.writePos] = inR;
+
+            // 2. Add newest to running sum accumulator
+            this.sumL += inL;
+            this.sumR += inR;
+
+            // 3. Subtract oldest leaving the window index
+            const readPos = (this.writePos - size) & this.mask;
+            this.sumL -= this.memL[readPos];
+            this.sumR -= this.memR[readPos];
+
+            // 4. Calculate Processed (Wet) Signal
+            const wetL = (this.sumL / size) * gain;
+            const wetR = (this.sumR / size) * gain;
+
+            // 5. Calculate Phase-Aligned Dry Signal (exact integer center point)
+            const delaySamps = (size - 1) / 2;
+            const dryPos = (this.writePos - delaySamps) & this.mask;
+            const dryL = this.memL[dryPos];
+            const dryR = this.memR[dryPos];
+
+            // 6. Blended Output (perfect zero-comb mixing)
+            outputL[i] = dryL + (wetL - dryL) * mix;
+            outputR[i] = dryR + (wetR - dryR) * mix;
+
+            this.writePos = (this.writePos + 1) & this.mask;
+          }
+
+          return true;
+        }
+      }
+
+      registerProcessor('moving-average-processor', MovingAverageProcessor);
+    `;
+
+    // 3. Application State and DOM Setup
+    let audioCtx = null;
+    let micSource = null;
+    let masterGainNode = null;
+    let analyserNode = null;
+    const tracks = [];
+
+    const micBtn = document.getElementById('mic-btn');
+    const statusText = document.getElementById('status-text');
+    const gridContainer = document.getElementById('grid-container');
+    const masterVolSlider = document.getElementById('master-vol');
+    const masterVolVal = document.getElementById('master-vol-val');
+    const masterMixSlider = document.getElementById('master-mix');
+    const masterMixVal = document.getElementById('master-mix-val');
+    const activeCountText = document.getElementById('active-count');
+
+    // 4. Dynamically Render the 25 Channels
+    oddTaps.forEach((taps, idx) => {
+      const category = getCategory(taps);
+      const card = document.createElement('div');
+      card.id = `card-${idx}`;
+      card.className = "channel-card bg-slate-900 border border-slate-800/80 rounded-xl p-4 flex flex-col space-y-3 opacity-60";
+      
+      card.innerHTML = `
+        <div class="flex justify-between items-center">
+          <div class="flex flex-col">
+            <span class="text-sm font-bold tracking-tight text-slate-100">${taps} Taps</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wider mt-1 ${category.color}">${category.text}</span>
+          </div>
+          <button id="toggle-${idx}" disabled onclick="toggleTrack(${idx})" class="w-10 h-6 bg-slate-800 rounded-full p-1 transition-all cursor-not-allowed">
+            <div id="dot-${idx}" class="w-4 h-4 rounded-full bg-slate-600 transition-all"></div>
+          </button>
+        </div>
+
+        <div class="flex flex-col space-y-1 pt-1">
+          <div class="flex justify-between text-[10px] font-mono text-slate-500">
+            <span>Wet Gain</span>
+            <span id="gain-val-${idx}">50%</span>
+          </div>
+          <input type="range" id="gain-${idx}" min="0" max="100" value="50" disabled oninput="updateTrack(${idx})" class="w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50">
+        </div>
+
+        <div class="flex flex-col space-y-1">
+          <div class="flex justify-between text-[10px] font-mono text-slate-500">
+            <span>Wet/Dry</span>
+            <span id="mix-val-${idx}">100%</span>
+          </div>
+          <input type="range" id="mix-${idx}" min="0" max="100" value="100" disabled oninput="updateTrack(${idx})" class="w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50">
+        </div>
+      `;
+      gridContainer.appendChild(card);
+    });
+
+    // 5. Initialize Web Audio Engine
+    micBtn.addEventListener('click', async () => {
+      if (audioCtx) return; // Prevent double initialization
+
+      statusText.textContent = "Requesting mic permission...";
+      
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        
+        // Convert the inline string code to a loadable Blobed URL Module
+        const blob = new Blob([workletCode], { type: 'application/javascript' });
+        const workletURL = URL.createObjectURL(blob);
+        await audioCtx.audioWorklet.addModule(workletURL);
+
+        micSource = audioCtx.createMediaStreamSource(stream);
+        masterGainNode = audioCtx.createGain();
+        masterGainNode.gain.setValueAtTime(masterVolSlider.value / 100, audioCtx.currentTime);
+
+        analyserNode = audioCtx.createAnalyser();
+        analyserNode.fftSize = 256;
+
+        // Build the 25 parallel DSP pathways
+        for (let i = 0; i < oddTaps.length; i++) {
+          const tapsValue = oddTaps[i];
+          const node = new AudioWorkletNode(audioCtx, 'moving-average-processor');
+          
+          // Map internal parameters directly to v3 definitions
+          node.parameters.get('size').setValueAtTime(tapsValue, audioCtx.currentTime);
+          node.parameters.get('gain').setValueAtTime(0.5, audioCtx.currentTime);
+          node.parameters.get('mix').setValueAtTime(1.0, audioCtx.currentTime);
+
+          // Individual track output router node
+          const trackGain = audioCtx.createGain();
+          trackGain.gain.setValueAtTime(0, audioCtx.currentTime); // default to muted
+
+          // Mic -> Tap Processor -> Router -> Master Mix Bus
+          micSource.connect(node);
+          node.connect(trackGain);
+          trackGain.connect(masterGainNode);
+
+          tracks.push({
+            node: node,
+            gainNode: trackGain,
+            active: false
+          });
+
+          // Enable UI elements
+          document.getElementById(`toggle-${i}`).disabled = false;
+          document.getElementById(`toggle-${i}`).classList.remove('cursor-not-allowed');
+          document.getElementById(`gain-${i}`).disabled = false;
+          document.getElementById(`gain-${i}`).classList.remove('cursor-not-allowed', 'opacity-50');
+          document.getElementById(`mix-${i}`).disabled = false;
+          document.getElementById(`mix-${i}`).classList.remove('cursor-not-allowed', 'opacity-50');
+        }
+
+        masterGainNode.connect(analyserNode);
+        analyserNode.connect(audioCtx.destination);
+
+        statusText.textContent = "Audio Engine: Online";
+        statusText.classList.add('neon-text', 'text-emerald-400');
+        micBtn.textContent = "Active";
+        micBtn.classList.add('bg-emerald-950', 'text-emerald-400', 'border', 'border-emerald-500', 'neon-active', 'cursor-not-allowed');
+        micBtn.disabled = true;
+
+        startVisualizer();
+        updateActiveCount();
+
+      } catch (err) {
+        console.error("Failed to start audio engine:", err);
+        statusText.textContent = "Permissions Denied / Audio Error";
+        statusText.classList.add('text-red-500');
+      }
+    });
+
+    // 6. Mixer Channel Interactions
+    window.toggleTrack = function(index) {
+      if (!audioCtx) return;
+      
+      const track = tracks[index];
+      const card = document.getElementById(`card-${index}`);
+      const dot = document.getElementById(`dot-${index}`);
+      const btn = document.getElementById(`toggle-${index}`);
+      
+      track.active = !track.active;
+
+      if (track.active) {
+        card.classList.remove('opacity-60');
+        card.classList.add('neon-border', 'border-emerald-500/50');
+        dot.className = "w-4 h-4 rounded-full bg-emerald-400 translate-x-4 shadow-md";
+        btn.className = "w-10 h-6 bg-emerald-950 rounded-full p-1 transition-all border border-emerald-500/50";
+        
+        // 1-pole smooth fade-in to prevent clicks
+        const targetGain = document.getElementById(`gain-${index}`).value / 100;
+        track.gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.01);
+      } else {
+        card.classList.add('opacity-60');
+        card.classList.remove('neon-border', 'border-emerald-500/50');
+        dot.className = "w-4 h-4 rounded-full bg-slate-600 transition-all";
+        btn.className = "w-10 h-6 bg-slate-800 rounded-full p-1 transition-all";
+        
+        // Smooth fade-out
+        track.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+      }
+      updateActiveCount();
+    }
+
+    window.updateTrack = function(index) {
+      if (!audioCtx) return;
+      const track = tracks[index];
+      const gainInput = document.getElementById(`gain-${index}`).value;
+      const mixInput = document.getElementById(`mix-${index}`).value;
+
+      document.getElementById(`gain-val-${index}`).textContent = `${gainInput}%`;
+      document.getElementById(`mix-val-${index}`).textContent = `${mixInput}%`;
+
+      // Set target parameters with smooth interpolation curves
+      track.node.parameters.get('mix').setTargetAtTime(mixInput / 100, audioCtx.currentTime, 0.01);
+      if (track.active) {
+        track.gainNode.gain.setTargetAtTime(gainInput / 100, audioCtx.currentTime, 0.01);
+      }
+    }
+
+    function updateActiveCount() {
+      const count = tracks.filter(t => t.active).length;
+      activeCountText.textContent = `${count} Channel${count !== 1 ? 's' : ''} Engaged`;
+    }
+
+    // 7. Master Parameters
+    masterVolSlider.addEventListener('input', () => {
+      const val = masterVolSlider.value;
+      masterVolVal.textContent = `${val}%`;
+      if (masterGainNode) {
+        masterGainNode.gain.setTargetAtTime(val / 100, audioCtx.currentTime, 0.01);
+      }
+    });
+
+    masterMixSlider.addEventListener('input', () => {
+      const val = masterMixSlider.value;
+      masterMixVal.textContent = `${val}%`;
+      if (audioCtx) {
+        // Global mix scales all parallel track mix parameters simultaneously
+        tracks.forEach(track => {
+          track.node.parameters.get('mix').setTargetAtTime(val / 100, audioCtx.currentTime, 0.01);
+        });
+      }
+    });
+
+    // 8. Visualizer Rendering
+    function startVisualizer() {
+      const canvas = document.getElementById('visualizer');
+      const canvasCtx = canvas.getContext('2d');
+      const bufferLength = analyserNode.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function draw() {
+        requestAnimationFrame(draw);
+
+        const width = canvas.width = canvas.parentElement.clientWidth;
+        const height = canvas.height = canvas.parentElement.clientHeight;
+
+        analyserNode.getByteFrequencyData(dataArray);
+
+        canvasCtx.fillStyle = '#020617'; // Dark Slate background
+        canvasCtx.fillRect(0, 0, width, height);
+
+        const barWidth = (width / bufferLength) * 2.5;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+          const percent = dataArray[i] / 255;
+          const barHeight = percent * height;
+
+          // Glowing emerald-to-cyan gradient
+          const red = 16;
+          const green = Math.floor(percent * 150 + 100);
+          const blue = Math.floor(percent * 80 + 120);
+
+          canvasCtx.fillStyle = `rgb(${red},${green},${blue})`;
+          canvasCtx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+
+          x += barWidth;
+        }
+      }
+      draw();
+    }
+
+    // 9. Quick Mixing Presets
+    window.applyPreset = function(type) {
+      if (!audioCtx) return;
+
+      tracks.forEach((track, idx) => {
+        let shouldEnable = false;
+        
+        if (type === 'softener' && oddTaps[idx] <= 201) shouldEnable = true;
+        if (type === 'muffle' && oddTaps[idx] > 201 && oddTaps[idx] <= 1501) shouldEnable = true;
+        if (type === 'wash' && oddTaps[idx] > 10001) shouldEnable = true;
+
+        // Force state alignment
+        if (track.active !== shouldEnable) {
+          toggleTrack(idx);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
