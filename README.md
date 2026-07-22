@@ -21,63 +21,96 @@ By splitting a live microphone input across **25 parallel DSP tracks**—ranging
 - v7 - https://3a865b9d.auraconv-multi-newdsp.pages.dev/ - WASM
 ---
 
-## ✨ Core Features
 
-* **Browser-Native DSP:** Leverages the high-performance `AudioWorklet` API to run complex filter calculations in a dedicated background audio thread, separate from the UI.
-* **25-Channel Parallel Matrix:** Features a modular mixer panel to independently control, blend, and mute 25 distinct odd-numbered tap lengths.
-* **Phase-Aligned Dry/Wet Pathing:** Every channel automatically calculates its own group delay, delaying its dry signal internally to prevent comb-filtering and phase cancellation during parallel mixing.
-* **Zero-Latency O(1) Complexity:** Implements a running-sum accumulator. Processing 100,000 taps requires the exact same CPU load during active playback as processing 25 taps.
-* **Dynamic Parameter Smoothing:** Individual channels and master faders employ single-pole parameter smoothing to eliminate digital "zipper noise" and click artifacts.
-* **Fully Standalone & Offline-Ready:** Packaged entirely inside a single, zero-dependency HTML file. Uses inline Blobed JS modules to bypass browser CORS limitations when running locally.
+# AuraConv Multi-Tap Resonator — v8.0.0 🌊
+
+![Platform](https://img.shields.io/badge/Platform-Web%20Audio%20API-blue?style=flat-square)
+![Category](https://img.shields.io/badge/Category-DSP%20Audio%20Effect-orange?style=flat-square)
+![Version](https://img.shields.io/badge/Version-8.0.0-success?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+
+**AuraConv Multi-Tap** is a browser-native, highly optimized parallel-path acoustic resonator and sound design engine written in native JavaScript. 
+
+Version 8.0.0 represents a complete paradigm shift, transforming the core algorithm from a static temporal blurring filter into an **active IIR Modal Resonator**. By introducing a real-time feedback matrix and dynamic spectral weighting across **150 independent parallel channels** (scaling up to **1,000,001 taps**), AuraConv can turn simple transients—like claps, whispers, or room noise—into lush, tuned acoustic chambers, physical-modeling string decays, and cavernous ambient drones.
 
 ---
 
-## 🔬 DSP Architecture under the Hood
+## ✨ Key Features
 
-This application implements several professional audio techniques directly in native JavaScript:
+* **Active Feedback Matrix (Modal Resonance):** Feeds a portion of each channel's output back into its own delay line. This converts the traditional FIR moving average filter into an **IIR string-model resonator** (similar to Karplus-Strong synthesis), producing organic, organ-like ringing chords.
+* **Timbre Tilt (Spectral Balance):** Dynamically applies a real-time linear weighting slope across the 150 channels. Shifting to **"Bright"** accentuates shorter, transient-softening tap sizes; shifting to **"Dark"** emphasizes deep, cavernous abyssal washes.
+* **150-Channel High-Resolution Grid:** Features a highly dense, responsive 5-column mixer board allowing independent gain, dry/wet, and active routing control over 150 logarithmically spaced channels.
+* **1,000,001 Tap Ceiling:** Scales up to **20.8 seconds of linear-phase group delay** (at 48kHz), working as an organic, slowly evolving drone generator.
+* **Dynamic Buffer Allocation:** Allocates RAM strictly based on each channel's individual tap size (rounded up to the nearest power of two), reducing the overall memory footprint of the 150-channel grid to **~234 MB** [1].
+* **Dynamic Audio Graph Routing:** Nodes are physically disconnected (`node.disconnect()`) from the Web Audio thread when muted, ensuring inactive channels consume **0% CPU processing overhead**.
+* **Mobile loudspeaker Rerouting Fix:** Implements modern `AudioSession` play-and-record profiles paired with a Web Audio asynchronous "jolt" (`suspend` / `resume` loop) to bypass earpiece routing, forcing output directly to the loud device speakers on iOS and Android.
 
-### 1. The AudioWorklet Thread Model
-While standard JavaScript runs on the main browser thread (which handles rendering, scrolling, and UI interactions), AuraConv registers a custom `AudioWorkletProcessor`. This runs on a highly prioritized, real-time background thread. The UI communicates with this thread via thread-safe `AudioParam` arrays.
+---
 
-### 2. Group Delay Alignment Math
-A symmetric moving average (FIR) filter introduces a delay of precisely:
-$$\text{Latency (samples)} = \frac{\text{Taps} - 1}{2}$$
+## 🔬 DSP Architecture Under the Hood
 
-Because all 25 channels utilize **odd numbers**, this latency is guaranteed to result in a whole integer. The dry signal for each channel is retrieved from the exact center of its delay line:
+### 1. The Active IIR Feedback Loop
+To achieve stable, highly musical physical-modeling resonance, AuraConv v8.0.0 implements an in-loop decay matrix within the custom `AudioWorkletProcessor`:
+
 ```javascript
-const delaySamps = (size - 1) / 2;
-const dryPos = (this.writePos - delaySamps) & this.mask;
-const dryL = this.memL[dryPos];
-```
-This enables phase-accurate summing when blending the dry and processed signals.
+// Feed back previous sample's processed wet signal into the current input
+const inL = inputL[i] + (this.prevWetL * feedback);
+const inR = inputR[i] + (this.prevWetR * feedback);
 
-### 3. Bitwise Circular Masking
-Memory allocation and address wrapping are handled via a power-of-two bitwise mask (`& 131071`). This bypasses slow conditional branches (like `if` statements) in the main loop, optimizing memory performance.
+this.memL[this.writePos] = inL;
+this.memR[this.writePos] = inR;
+
+this.sumL += inL;
+this.sumR += inR;
+
+// [Standard Moving Average Math]
+const wetL = (this.sumL / size) * gain;
+const wetR = (this.sumR / size) * gain;
+
+// Cache current wet output for the next feedback calculation
+this.prevWetL = wetL;
+this.prevWetR = wetR;
+```
+Because the feedback parameters are bounded strictly to `0.95`, the loop gain remains safe and acoustically stable across all 150 parallel pipelines.
+
+### 2. Linear Spectral Weighting (Timbre Tilt)
+Adjusting 150 channels individually for tonal balance is resolved through a zero-CPU overhead weighting curve applied dynamically during master gain calculations:
+```javascript
+const progress = idx / 149; // Range: 0 (shortest) to 1 (longest)
+if (tiltVal > 50) {
+  // Bright tilt: attenuate long taps, preserve short taps
+  const factor = (100 - tiltVal) / 50; 
+  weight = 1 - progress + (progress * factor);
+} else {
+  // Dark tilt: attenuate short taps, preserve long taps
+  const factor = tiltVal / 50; 
+  weight = progress + ((1 - progress) * factor);
+}
+const finalGain = rawGain * weight;
+```
 
 ---
 
 ## 🎛️ Acoustic Classifications & Grid Layout
 
-The 25 parallel channel strips are dynamically categorized based on their physical tap length to aid in intuitive sound design:
+The 150 parallel channels are categorized into five distinct color-coded bands to streamline the sound design process:
 
-* **Transient Softeners (25 – 201 Taps):** Sharp, punchy windows designed to soften the harshness of transients, useful for percussion and vocal consonants.
-* **Mid-Range Warmth (251 – 1,501 Taps):** Smooth, mid-frequency blurs that muffle harsher frequencies and accentuate the fundamental warmth of vocals and instruments.
-* **Cloudy Blurs (2,001 – 10,001 Taps):** Dense, reflective windows that smear physical separation, blending distinct sounds into singular, cloudy textures.
-* **Ambient Washes (15,001 – 100,001 Taps):** Massive time-windows that act similarly to physical reverberation chambers, melting transients into seamless ambient drones and drones.
+* **Soften (25 – 250 Taps / Blue):** Sharp, immediate windows designed to soften harsh transients on percussion or vocal sibilance.
+* **Warmth (251 – 2,000 Taps / Amber):** Smooth, mid-frequency muffling that highlights fundamental harmonics and vocal warmth.
+* **Blur (2,001 – 20,000 Taps / Purple):** Moderate time-smearing, blending distinct sounds into cloud-like textures.
+* **Wash (20,001 – 150,000 Taps / Emerald):** Massive temporal blur, turning sound into an acoustic ambient chamber.
+* **Abyss (150,001 – 1,000,001 Taps / Cyan):** Cavernous, slow-building linear delay structures that create infinite drone beds.
 
 ---
 
 ## 🚀 Getting Started
 
-No installation, terminal commands, or hosting setups are required.
-
-1. Download the `auraconv_app.html` file.
-2. Double-click the file to open it in Chrome, Safari, Edge, or Firefox.
-3. Plug in headphones (highly recommended to prevent microphone feedback loop).
-4. Click **Activate Microphone**, allow browser mic access, and begin.
+1. Download the `auraconv_abyss.html` file.
+2. Double-click the file to open it in any modern web browser (Chrome, Edge, Safari, Firefox).
+3. Connect headphones (highly recommended to prevent microphone feedback loops).
+4. Click **Activate Microphone** and begin exploring.
 
 ---
 
-## 📜 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+## 📜 License & Contributing
+Licensed under the MIT License. Pull requests and DSP optimizations are welcome!
