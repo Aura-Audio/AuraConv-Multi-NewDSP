@@ -105,6 +105,24 @@
           <div class="absolute bottom-2 left-2 text-[10px] font-mono text-slate-500 tracking-wider">Output Spectrum</div>
         </div>
 
+        <!-- Master Dry/Wet -->
+        <div class="flex flex-col space-y-2">
+          <div class="flex justify-between text-xs font-mono text-slate-400">
+            <span>Global Mix</span>
+            <span id="master-mix-val">100%</span>
+          </div>
+          <input type="range" id="master-mix" min="0" max="100" value="100" class="w-full accent-emerald-500 bg-slate-950 h-2 rounded-lg cursor-pointer">
+        </div>
+
+        <!-- Master Gain -->
+        <div class="flex flex-col space-y-2">
+          <div class="flex justify-between text-xs font-mono text-slate-400">
+            <span>Master Volume</span>
+            <span id="master-vol-val">70%</span>
+          </div>
+          <input type="range" id="master-vol" min="0" max="100" value="70" class="w-full accent-emerald-500 bg-slate-950 h-2 rounded-lg cursor-pointer">
+        </div>
+
         <!-- Resonance (Feedback) Slider -->
         <div class="flex flex-col space-y-2 pt-2">
           <div class="flex justify-between text-xs font-mono text-slate-400">
@@ -159,13 +177,13 @@
       
       <!-- Highly-responsive, high-density 150-column viewport grid -->
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5 overflow-y-auto max-h-[85vh] pr-2" id="grid-container">
-        <!-- Generates 150 channels dynamically here -->
+        <!-- Generates 150 channels dynamically here via Fast DOM Injection -->
       </div>
     </div>
   </main>
 
   <footer class="border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-600 bg-slate-950">
-    AuraConv DSP Engine v4 • Bandpass Filter & Modal Resonator Architecture
+    AuraConv DSP Engine v9.1 • Bandpass Filter & Modal Resonator Architecture
   </footer>
 
   <script>
@@ -322,42 +340,46 @@
     const hcFreqVal = document.getElementById('hc-freq-val');
     const hcQVal = document.getElementById('hc-q-val');
 
-    // 4. Populate 150 Mixer Strip Cards
+    // 4. [FAST DOM INJECTION]: Generate 150 cards instantly
+    let htmlBuffer = '';
     oddTaps.forEach((taps, idx) => {
       const category = getCategory(taps);
-      const card = document.createElement('div');
-      card.className = "channel-card bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex flex-col space-y-2 opacity-60";
-      
-      card.innerHTML = `
-        <div class="flex justify-between items-center">
-          <div class="flex items-center space-x-2">
-            <span class="text-xs font-bold text-slate-200">${taps.toLocaleString()}</span>
-            <span class="text-[8px] px-1 py-0.5 rounded border uppercase tracking-wider ${category.color}">${category.text}</span>
+      htmlBuffer += `
+        <div id="card-${idx}" class="channel-card bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex flex-col space-y-2 opacity-60">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-2 overflow-hidden">
+              <span class="text-xs font-bold text-slate-200 truncate">${taps.toLocaleString()}</span>
+              <span class="text-[8px] px-1 py-0.5 rounded border uppercase tracking-wider ${category.color}">${category.text}</span>
+            </div>
+            <button data-idx="${idx}" class="toggle-btn w-8 h-5 bg-slate-800 rounded-full p-0.5 transition-all cursor-not-allowed" disabled>
+              <div class="dot w-3.5 h-3.5 rounded-full bg-slate-600 transition-all"></div>
+            </button>
           </div>
-          <button data-idx="${idx}" class="toggle-btn w-8 h-5 bg-slate-800 rounded-full p-0.5 transition-all cursor-not-allowed" disabled>
-            <div class="dot w-3.5 h-3.5 rounded-full bg-slate-600 transition-all"></div>
-          </button>
-        </div>
-        <div class="flex flex-col space-y-0.5 pt-1">
-          <div class="flex justify-between text-[9px] font-mono text-slate-500">
-            <span>Gain</span>
-            <span class="gain-val">50%</span>
+          <div class="flex flex-col space-y-0.5 pt-1">
+            <div class="flex justify-between text-[9px] font-mono text-slate-500">
+              <span>Gain</span>
+              <span class="gain-val">50%</span>
+            </div>
+            <input type="range" data-idx="${idx}" class="gain-slider w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50" min="0" max="100" value="50" disabled>
           </div>
-          <input type="range" data-idx="${idx}" class="gain-slider w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50" min="0" max="100" value="50" disabled>
-        </div>
-        <div class="flex flex-col space-y-0.5">
-          <div class="flex justify-between text-[9px] font-mono text-slate-500">
-            <span>Mix</span>
-            <span class="mix-val">100%</span>
+          <div class="flex flex-col space-y-0.5">
+            <div class="flex justify-between text-[9px] font-mono text-slate-500">
+              <span>Mix</span>
+              <span class="mix-val">100%</span>
+            </div>
+            <input type="range" data-idx="${idx}" class="mix-slider w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50" min="0" max="100" value="100" disabled>
           </div>
-          <input type="range" data-idx="${idx}" class="mix-slider w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50" min="0" max="100" value="100" disabled>
         </div>
       `;
-      gridContainer.appendChild(card);
-      
+    });
+    gridContainer.innerHTML = htmlBuffer;
+
+    // Cache elements and instantiate track config structures
+    const cards = gridContainer.querySelectorAll('.channel-card');
+    cards.forEach((card, idx) => {
       tracks.push({
         idx,
-        taps,
+        taps: oddTaps[idx],
         node: null,
         gainNode: null,
         active: false,
@@ -373,21 +395,35 @@
       });
     });
 
-    // 5. Initialize Web Audio Engine
+    // 5. Initialize Web Audio Engine (MOBILE BULLETPROOFED)
     micBtn.addEventListener('click', async () => {
       if (audioCtx) return;
       statusText.textContent = "Connecting stream...";
+      
+      // Synchronously create AudioContext to satisfy strict browser security
       audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+      if (audioCtx.state === 'suspended') audioCtx.resume();
 
       try {
-        if ('audioSession' in navigator) navigator.audioSession.type = 'play-and-record';
+        // Safe wrap AudioSession for older iOS compat
+        try {
+          if ('audioSession' in navigator) navigator.audioSession.type = 'play-and-record';
+        } catch(e) { console.warn("AudioSession ignored", e); }
 
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
-          video: false 
-        });
+        let stream;
+        try {
+          // Attempt high-fidelity capture (no echo cancellation)
+          stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: { echoCancellation: { ideal: false }, noiseSuppression: { ideal: false }, autoGainControl: { ideal: false } }, 
+            video: false 
+          });
+        } catch (constraintErr) {
+          // Fallback if hardware refuses constraints
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        }
         
-        const blob = new Blob([workletCode], { type: 'application/javascript' });
+        // Exact MIME type required for strict browsers
+        const blob = new Blob([workletCode], { type: 'application/javascript; charset=utf-8' });
         const workletURL = URL.createObjectURL(blob);
         await audioCtx.audioWorklet.addModule(workletURL);
         URL.revokeObjectURL(workletURL); 
@@ -466,7 +502,8 @@
 
       } catch (err) {
         console.error("Audio init failure:", err);
-        statusText.textContent = "Error: Input Blocked";
+        const errorMsg = err.name || err.message || "Unknown Block";
+        statusText.textContent = "Err: " + errorMsg;
         statusText.classList.add('text-red-500');
       }
     });
@@ -479,17 +516,15 @@
     function updatePreFilterSettings() {
       if (!audioCtx) return;
       
-      // Calculate Low Cut (20 Hz - 2000 Hz)
       const lcVal = parseInt(lcFreq.value, 10);
       const lcHz = getLogFreq(20, 2000, lcVal);
       lcFreqVal.textContent = `${Math.round(lcHz)} Hz`;
       lowCutNode.frequency.setTargetAtTime(lcHz, audioCtx.currentTime, 0.05);
       
-      const lcQFactor = 0.5 + (parseInt(lcQ.value, 10) / 100) * 15; // Maps 0-100 to 0.5-15.5 Q
+      const lcQFactor = 0.5 + (parseInt(lcQ.value, 10) / 100) * 15; 
       lcQVal.textContent = `${lcQ.value}%`;
       lowCutNode.Q.setTargetAtTime(lcQFactor, audioCtx.currentTime, 0.05);
 
-      // Calculate High Cut (500 Hz - 20000 Hz)
       const hcVal = parseInt(hcFreq.value, 10);
       const hcHz = getLogFreq(500, 20000, hcVal);
       hcFreqVal.textContent = `${Math.round(hcHz)} Hz`;
@@ -503,7 +538,6 @@
     function updatePreFilterRouting() {
       if (!audioCtx) return;
       
-      // Disconnect all to rebuild chain safely
       micGainNode.disconnect();
       lowCutNode.disconnect();
       highCutNode.disconnect();
@@ -520,7 +554,6 @@
         currentNode = highCutNode;
       }
 
-      // Connect the end of the dynamic chain to the distribution hub
       currentNode.connect(preFilterOutNode);
     }
 
@@ -563,7 +596,6 @@
         ui.dot.className = "dot w-3.5 h-3.5 rounded-full bg-emerald-400 translate-x-3.5 shadow-md";
         ui.toggleBtn.className = "toggle-btn w-8 h-5 bg-emerald-950 rounded-full p-0.5 transition-all border border-emerald-500/50";
         
-        // Connect to the pre-filter output distribution hub (NOT micSource directly)
         preFilterOutNode.connect(track.node);
         track.node.connect(track.gainNode);
         updateTrackGain(index); 
@@ -728,5 +760,5 @@
     // Initialize Pre-Filter Values on load
     updatePreFilterSettings();
   </script>
-</body>
-  </html>
+</body> 
+</html>
