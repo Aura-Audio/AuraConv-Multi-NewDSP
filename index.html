@@ -177,7 +177,7 @@
       
       <!-- Highly-responsive, high-density 150-column viewport grid -->
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5 overflow-y-auto max-h-[85vh] pr-2" id="grid-container">
-        <!-- Generates 150 channels dynamically here via Fast DOM Injection -->
+        <!-- Generates 150 channels dynamically here -->
       </div>
     </div>
   </main>
@@ -187,7 +187,7 @@
   </footer>
 
   <script>
-    // 1. Generate 150 logarithmically distributed odd-numbered tap lengths
+    // 1. Generate 150 logarithmically distributed odd-numbered tap lengths (up to 1,000,001)
     const oddTaps = [];
     const minTaps = 25;
     const maxTaps = 1000001; 
@@ -366,7 +366,7 @@
             <div class="flex justify-between text-[9px] font-mono text-slate-500">
               <span>Mix</span>
               <span class="mix-val">100%</span>
-            </div>
+          </div>
             <input type="range" data-idx="${idx}" class="mix-slider w-full accent-emerald-500 bg-slate-950 h-1 rounded-lg cursor-not-allowed opacity-50" min="0" max="100" value="100" disabled>
           </div>
         </div>
@@ -412,13 +412,18 @@
 
         let stream;
         try {
-          // Attempt high-fidelity capture (no echo cancellation)
+          // Attempt high-fidelity capture using "ideal" so the browser doesn't panic
           stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: { echoCancellation: { ideal: false }, noiseSuppression: { ideal: false }, autoGainControl: { ideal: false } }, 
+            audio: { 
+              echoCancellation: { ideal: false }, 
+              noiseSuppression: { ideal: false }, 
+              autoGainControl: { ideal: false } 
+            }, 
             video: false 
           });
         } catch (constraintErr) {
-          // Fallback if hardware refuses constraints
+          console.warn("High-fidelity mic rejected, falling back to basic...", constraintErr);
+          // Fallback if hardware refuses constraints completely
           stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         }
         
@@ -479,6 +484,7 @@
         masterGainNode.connect(analyserNode);
         analyserNode.connect(audioCtx.destination);
 
+        // WebKit Mobile Speaker Routing Fix / Autoplay bypass
         if (audioCtx.suspend && audioCtx.resume) {
           await audioCtx.suspend();
           await audioCtx.resume();
@@ -502,6 +508,7 @@
 
       } catch (err) {
         console.error("Audio init failure:", err);
+        // Print the EXACT error to the screen so we can see what failed
         const errorMsg = err.name || err.message || "Unknown Block";
         statusText.textContent = "Err: " + errorMsg;
         statusText.classList.add('text-red-500');
@@ -511,6 +518,30 @@
     // 6. Pre-Filter Math & Routing Engine
     function getLogFreq(min, max, val) {
       return min * Math.pow(max / min, val / 100);
+    }
+
+    // Centralized Track State Management & Timbre Weighting
+    function updateTrackGain(idx) {
+      if (!audioCtx) return;
+      const track = tracks[idx];
+      const rawGain = parseFloat(track.ui.gainSlider.value) / 100;
+      const tiltVal = parseFloat(document.getElementById('master-tilt').value); 
+      let weight = 1.0;
+      
+      if (tiltVal > 50) {
+        const factor = (100 - tiltVal) / 50; 
+        const progress = idx / 149; 
+        weight = 1 - progress + (progress * factor);
+      } else if (tiltVal < 50) {
+        const factor = tiltVal / 50; 
+        const progress = idx / 149; 
+        weight = progress + ((1 - progress) * factor);
+      }
+      
+      const finalGain = rawGain * weight;
+      if (track.active) {
+        track.gainNode.gain.setTargetAtTime(finalGain, audioCtx.currentTime, 0.01);
+      }
     }
 
     function updatePreFilterSettings() {
@@ -559,30 +590,6 @@
 
     [lcFreq, lcQ, hcFreq, hcQ].forEach(el => el.addEventListener('input', updatePreFilterSettings));
     [lcEnable, hcEnable].forEach(el => el.addEventListener('change', updatePreFilterRouting));
-
-    // 7. Centralized Track State Management & Timbre Weighting
-    function updateTrackGain(idx) {
-      if (!audioCtx) return;
-      const track = tracks[idx];
-      const rawGain = parseFloat(track.ui.gainSlider.value) / 100;
-      const tiltVal = parseFloat(document.getElementById('master-tilt').value); 
-      let weight = 1.0;
-      
-      if (tiltVal > 50) {
-        const factor = (100 - tiltVal) / 50; 
-        const progress = idx / 149; 
-        weight = 1 - progress + (progress * factor);
-      } else if (tiltVal < 50) {
-        const factor = tiltVal / 50; 
-        const progress = idx / 149; 
-        weight = progress + ((1 - progress) * factor);
-      }
-      
-      const finalGain = rawGain * weight;
-      if (track.active) {
-        track.gainNode.gain.setTargetAtTime(finalGain, audioCtx.currentTime, 0.01);
-      }
-    }
 
     function setTrackActive(index, isActive) {
       const track = tracks[index];
@@ -760,5 +767,5 @@
     // Initialize Pre-Filter Values on load
     updatePreFilterSettings();
   </script>
-</body> 
-</html>
+</body>
+            </html>
